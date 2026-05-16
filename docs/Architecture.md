@@ -19,6 +19,9 @@
 
 # 2. Компонентная диаграмма
 
+![Architecture Diagram](<img width="1154" height="703" alt="ad" src="https://github.com/user-attachments/assets/b329ce21-ca7a-4a4b-abc7-88cbfefd5e8c" />
+)
+
 ## 2.1. Сервер
 
 **Роль:** центральный компонент системы.
