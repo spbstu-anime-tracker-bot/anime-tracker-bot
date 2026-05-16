@@ -19,8 +19,8 @@
 
 # 2. Компонентная диаграмма
 
-![Architecture Diagram](<img width="1154" height="703" alt="ad" src="https://github.com/user-attachments/assets/b329ce21-ca7a-4a4b-abc7-88cbfefd5e8c" />
-)
+<img width="1154" height="703" alt="ad" src="https://github.com/user-attachments/assets/0122a695-53f5-4da0-9a68-183baed9770a" />
+
 
 ## 2.1. Сервер
 
