@@ -43,8 +43,8 @@ public class AdviseModule {
         return animeRepository.findByIdsOrderedByPopularity(ids);
     }
 
-    public boolean hasRatedAnime(Long userId) {
-        return listViewedRepository.countRatedByUserId(userId) > 0;
+    public boolean hasWatchedAnime(Long userId) {
+        return listViewedRepository.countByUserId(userId) > 0;
     }
 
     public boolean isAlreadyProcessing(Long userId) {

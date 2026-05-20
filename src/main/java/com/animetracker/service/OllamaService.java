@@ -66,15 +66,28 @@ public class OllamaService {
         }
     }
 
-    private String buildPrompt(List<Object[]> ratedAnime) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("I have watched these anime and rated them:\n");
-        for (Object[] row : ratedAnime) {
+    private String buildPrompt(List<Object[]> watchedAnime) {
+        StringBuilder rated = new StringBuilder();
+        StringBuilder watched = new StringBuilder();
+
+        for (Object[] row : watchedAnime) {
             String title = (String) row[2];
             Object score = row[1];
-            sb.append("- ").append(title).append(": ").append(score).append("/10\n");
+            if (score != null) {
+                rated.append("- ").append(title).append(": ").append(score).append("/10\n");
+            } else {
+                watched.append("- ").append(title).append("\n");
+            }
         }
-        sb.append("\nBased on my ratings, recommend exactly 10 anime I have NOT watched yet. ");
+
+        StringBuilder sb = new StringBuilder();
+        if (!rated.isEmpty()) {
+            sb.append("Anime I have watched and rated:\n").append(rated);
+        }
+        if (!watched.isEmpty()) {
+            sb.append("\nAnime I have watched (no rating):\n").append(watched);
+        }
+        sb.append("\nBased on my watch history, recommend exactly 10 anime I have NOT watched yet. ");
         sb.append("Return ONLY a numbered list of anime titles (1-10), one per line, no explanations. ");
         sb.append("Use the official title as it appears on MyAnimeList.");
         return sb.toString();

@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 @Service
 public class DisplayCardsModule {
 
-    public String buildCardText(Anime anime) {
+    public String buildCardText(Anime anime, Integer userScore) {
         StringBuilder sb = new StringBuilder();
         sb.append("🎌 *").append(escape(anime.getTitle())).append("*\n");
 
@@ -27,6 +27,7 @@ public class DisplayCardsModule {
         if (anime.getStatus() != null) sb.append("📋 Статус: ").append(anime.getStatus()).append("\n");
         if (anime.getEpisodes() != null) sb.append("📌 Эпизоды: ").append(anime.getEpisodes()).append("\n");
         if (anime.getScore() != null) sb.append("⭐ Рейтинг: ").append(String.format("%.2f", anime.getScore())).append("\n");
+        if (userScore != null) sb.append("📝 Ваша оценка: ").append(userScore).append("/10\n");
 
         String dates = buildDateRange(anime);
         if (!dates.isBlank()) sb.append("📅 Дата: ").append(dates).append("\n");
@@ -42,7 +43,7 @@ public class DisplayCardsModule {
         return sb.toString();
     }
 
-    public InlineKeyboardMarkup buildCardKeyboard(Anime anime, boolean inViewed, boolean inToView) {
+    public InlineKeyboardMarkup buildCardKeyboard(Anime anime, boolean inViewed, boolean inToView, Integer userScore) {
         Long animeId = anime.getId();
         List<InlineKeyboardRow> rows = new ArrayList<>();
 
@@ -64,7 +65,10 @@ public class DisplayCardsModule {
 
         if (inViewed) {
             InlineKeyboardRow row3 = new InlineKeyboardRow();
-            row3.add(btn("⭐ Поставить оценку", "ra:" + animeId));
+            String rateLabel = (userScore != null)
+                    ? "⭐ Оценка: " + userScore + "/10 (изменить)"
+                    : "⭐ Поставить оценку";
+            row3.add(btn(rateLabel, "ra:" + animeId));
             rows.add(row3);
         }
 

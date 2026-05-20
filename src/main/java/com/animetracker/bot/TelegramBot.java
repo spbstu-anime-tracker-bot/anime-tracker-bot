@@ -178,9 +178,9 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
             }
         }
 
-        // Нет оценок — показываем самые популярные
-        if (!adviseModule.hasRatedAnime(userId)) {
-            send(chatId, "У вас пока нет оценок. Показываем самые популярные аниме:");
+        
+        if (!adviseModule.hasWatchedAnime(userId)) {
+            send(chatId, "У вас пока нет просмотренных аниме. Показываем самые популярные:");
             sendResults(userId, chatId, adviseModule.getPopularFallback());
             return;
         }
@@ -313,13 +313,14 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
 
         boolean inViewed = manageUserListsModule.isInViewed(userId, animeId);
         boolean inToView = manageUserListsModule.isInToView(userId, animeId);
+        Integer userScore = manageUserListsModule.getUserScore(userId, animeId);
         try {
             telegramClient.execute(EditMessageText.builder()
                     .chatId(chatId)
                     .messageId(messageId)
-                    .text(displayCardsModule.buildCardText(anime))
+                    .text(displayCardsModule.buildCardText(anime, userScore))
                     .parseMode("Markdown")
-                    .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                    .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore))
                     .build());
         } catch (Exception e) {
             log.warn("Could not edit message: {}", e.getMessage());
@@ -349,12 +350,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
                 Anime anime = pageItems.get(i);
                 boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
                 boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+                Integer userScore = manageUserListsModule.getUserScore(userId, anime.getId());
                 telegramClient.execute(EditMessageText.builder()
                         .chatId(chatId)
                         .messageId(cardIds.get(i))
-                        .text(displayCardsModule.buildCardText(anime))
+                        .text(displayCardsModule.buildCardText(anime, userScore))
                         .parseMode("Markdown")
-                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore))
                         .build());
             } catch (Exception e) {
                 log.warn("Could not edit card: {}", e.getMessage());
@@ -380,11 +382,12 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
                 Anime anime = pageItems.get(i);
                 boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
                 boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+                Integer userScore = manageUserListsModule.getUserScore(userId, anime.getId());
                 Message sent = telegramClient.execute(SendMessage.builder()
                         .chatId(chatId)
-                        .text(displayCardsModule.buildCardText(anime))
+                        .text(displayCardsModule.buildCardText(anime, userScore))
                         .parseMode("Markdown")
-                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore))
                         .build());
                 cardIds.add(sent.getMessageId());
             } catch (Exception e) {
@@ -422,12 +425,13 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         for (Anime anime : pageItems) {
             boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
             boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+            Integer userScore = manageUserListsModule.getUserScore(userId, anime.getId());
             try {
                 Message sent = telegramClient.execute(SendMessage.builder()
                         .chatId(chatId)
-                        .text(displayCardsModule.buildCardText(anime))
+                        .text(displayCardsModule.buildCardText(anime, userScore))
                         .parseMode("Markdown")
-                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore))
                         .build());
                 cardMessageIds.add(sent.getMessageId());
             } catch (Exception e) {

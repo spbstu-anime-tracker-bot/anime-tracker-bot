@@ -47,16 +47,15 @@ public class RecommendationWorker {
                 .findTopByUserIdAndStatusOrderByCreatedAtDesc(userId, "PROCESSING");
 
         try {
-            List<Object[]> ratedAnime = listViewedRepository.findRatedAnimeByUserId(userId);
+            List<Object[]> watchedAnime = listViewedRepository.findAllWatchedAnimeByUserId(userId);
 
-            if (ratedAnime.isEmpty()) {
-                
+            if (watchedAnime.isEmpty()) {
                 sendResult(event.getRequestId(), userId, "FAILED");
                 updateRequestStatus(reqOpt, "FAILED");
                 return;
             }
 
-            List<String> recommendedTitles = ollamaService.getRecommendations(ratedAnime);
+            List<String> recommendedTitles = ollamaService.getRecommendations(watchedAnime);
 
             if (recommendedTitles.isEmpty()) {
                 sendResult(event.getRequestId(), userId, "FAILED");

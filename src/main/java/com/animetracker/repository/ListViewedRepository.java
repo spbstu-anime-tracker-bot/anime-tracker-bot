@@ -29,4 +29,11 @@ public interface ListViewedRepository extends JpaRepository<ListViewed, Long> {
         WHERE lv.user_id = :userId AND lv.user_score IS NOT NULL
         """, nativeQuery = true)
     List<Object[]> findRatedAnimeByUserId(@Param("userId") Long userId);
+
+    @Query(value = """
+        SELECT lv.anime_id, lv.user_score, a.title FROM "user"."listViewed" lv
+        JOIN anime.anime a ON lv.anime_id = a.id
+        WHERE lv.user_id = :userId
+        """, nativeQuery = true)
+    List<Object[]> findAllWatchedAnimeByUserId(@Param("userId") Long userId);
 }

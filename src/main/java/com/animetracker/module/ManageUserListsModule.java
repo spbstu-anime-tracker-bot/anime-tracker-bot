@@ -28,9 +28,12 @@ public class ManageUserListsModule {
         entry.setUserId(userId);
         entry.setAnimeId(animeId);
         listViewedRepository.save(entry);
-        
         listToViewRepository.findByUserIdAndAnimeId(userId, animeId)
                 .ifPresent(listToViewRepository::delete);
+        if (recommendationCacheRepository.existsByUserId(userId)) {
+            recommendationCacheRepository.deleteByUserId(userId);
+            log.info("Invalidated recommendation cache for user {} after adding to viewed", userId);
+        }
         return "✅ Добавлено в просмотренные.";
     }
 
@@ -71,5 +74,11 @@ public class ManageUserListsModule {
 
     public boolean isInToView(Long userId, Long animeId) {
         return listToViewRepository.existsByUserIdAndAnimeId(userId, animeId);
+    }
+
+    public Integer getUserScore(Long userId, Long animeId) {
+        return listViewedRepository.findByUserIdAndAnimeId(userId, animeId)
+                .map(lv -> lv.getUserScore())
+                .orElse(null);
     }
 }
