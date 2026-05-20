@@ -12,4 +12,6 @@ public interface RecommendationRequestRepository extends JpaRepository<Recommend
     Optional<RecommendationRequest> findTopByUserIdAndStatusOrderByCreatedAtDesc(Long userId, String status);
 
     Optional<RecommendationRequest> findTopByUserIdOrderByCreatedAtDesc(Long userId);
+
+    boolean existsByUserIdAndStatus(Long userId, String status);
 }

@@ -5,6 +5,7 @@ import com.animetracker.entity.AnimeGenre;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,6 @@ public class DisplayCardsModule {
         if (anime.getTitleEnglish() != null && !anime.getTitleEnglish().isBlank()) {
             sb.append("🔤 ").append(escape(anime.getTitleEnglish())).append("\n");
         }
-
         sb.append("\n");
 
         if (anime.getType() != null) sb.append("📺 Тип: ").append(anime.getType()).append("\n");
@@ -39,17 +39,14 @@ public class DisplayCardsModule {
             if (synopsis.length() > 300) synopsis = synopsis.substring(0, 300) + "…";
             sb.append("\n📖 ").append(escape(synopsis));
         }
-
         return sb.toString();
     }
 
     public InlineKeyboardMarkup buildCardKeyboard(Anime anime, boolean inViewed, boolean inToView) {
         Long animeId = anime.getId();
+        List<InlineKeyboardRow> rows = new ArrayList<>();
 
-        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-
-        
-        List<InlineKeyboardButton> row1 = new ArrayList<>();
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
         if (inViewed) {
             row1.add(btn("✅ Удалить из просмотренных", "rv:" + animeId));
         } else {
@@ -57,8 +54,7 @@ public class DisplayCardsModule {
         }
         rows.add(row1);
 
-        
-        List<InlineKeyboardButton> row2 = new ArrayList<>();
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
         if (inToView) {
             row2.add(btn("📌 Удалить из отслеживаемых", "rt:" + animeId));
         } else {
@@ -66,39 +62,29 @@ public class DisplayCardsModule {
         }
         rows.add(row2);
 
-        
         if (inViewed) {
-            rows.add(List.of(btn("⭐ Поставить оценку", "ra:" + animeId)));
+            InlineKeyboardRow row3 = new InlineKeyboardRow();
+            row3.add(btn("⭐ Поставить оценку", "ra:" + animeId));
+            rows.add(row3);
         }
 
-        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+        return new InlineKeyboardMarkup(rows);
     }
 
     public InlineKeyboardMarkup buildRatingKeyboard(Long animeId) {
-        List<List<InlineKeyboardButton>> rows = new ArrayList<>();
-        List<InlineKeyboardButton> row1 = new ArrayList<>();
-        List<InlineKeyboardButton> row2 = new ArrayList<>();
-
-        for (int i = 1; i <= 5; i++) {
-            row1.add(btn(String.valueOf(i), "rs:" + animeId + ":" + i));
-        }
-        for (int i = 6; i <= 10; i++) {
-            row2.add(btn(String.valueOf(i), "rs:" + animeId + ":" + i));
-        }
-
-        rows.add(row1);
-        rows.add(row2);
-        return InlineKeyboardMarkup.builder().keyboard(rows).build();
+        InlineKeyboardRow row1 = new InlineKeyboardRow();
+        InlineKeyboardRow row2 = new InlineKeyboardRow();
+        for (int i = 1; i <= 5; i++) row1.add(btn(String.valueOf(i), "rs:" + animeId + ":" + i));
+        for (int i = 6; i <= 10; i++) row2.add(btn(String.valueOf(i), "rs:" + animeId + ":" + i));
+        return new InlineKeyboardMarkup(List.of(row1, row2));
     }
 
     public InlineKeyboardMarkup buildNavKeyboard(boolean hasPrev, boolean hasNext, int currentPage, int totalPages) {
-        List<InlineKeyboardButton> row = new ArrayList<>();
-
+        InlineKeyboardRow row = new InlineKeyboardRow();
         if (hasPrev) row.add(btn("⬅ Предыдущая", "pp"));
         row.add(btn((currentPage + 1) + "/" + totalPages, "noop"));
         if (hasNext) row.add(btn("Следующая ➡", "np"));
-
-        return InlineKeyboardMarkup.builder().keyboard(List.of(row)).build();
+        return new InlineKeyboardMarkup(List.of(row));
     }
 
     private InlineKeyboardButton btn(String text, String callbackData) {

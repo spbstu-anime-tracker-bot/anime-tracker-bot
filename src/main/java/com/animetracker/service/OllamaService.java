@@ -4,65 +4,65 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public class GeminiService {
+@Service
+public class OllamaService {
 
     private final RestTemplate restTemplate;
-    private final String apiKey;
     private final String apiUrl;
+    private final String model;
     private final ObjectMapper objectMapper;
 
-    public GeminiService(
-            RestTemplateBuilder builder,
-            @Value("${gemini.api.key}") String apiKey,
-            @Value("${gemini.api.url}") String apiUrl,
-            @Value("${gemini.api.timeout-seconds:60}") int timeoutSeconds,
+    public OllamaService(
+            @Value("${ollama.api.url}") String apiUrl,
+            @Value("${ollama.api.model:gemma3}") String model,
+            @Value("${ollama.api.timeout-seconds:120}") int timeoutSeconds,
             ObjectMapper objectMapper) {
-        this.restTemplate = builder
-                .connectTimeout(Duration.ofSeconds(timeoutSeconds))
-                .readTimeout(Duration.ofSeconds(timeoutSeconds))
-                .build();
-        this.apiKey = apiKey;
         this.apiUrl = apiUrl;
+        this.model = model;
         this.objectMapper = objectMapper;
+        
+        org.springframework.http.client.SimpleClientHttpRequestFactory factory =
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setProxy(Proxy.NO_PROXY);
+        factory.setConnectTimeout((int) Duration.ofSeconds(10).toMillis());
+        factory.setReadTimeout((int) Duration.ofSeconds(timeoutSeconds).toMillis());
+        this.restTemplate = new RestTemplate(factory);
     }
 
-    /**
-     
-     
-     */
     public List<String> getRecommendations(List<Object[]> ratedAnime) {
         String prompt = buildPrompt(ratedAnime);
 
         Map<String, Object> requestBody = Map.of(
-                "contents", List.of(Map.of(
-                        "parts", List.of(Map.of("text", prompt))
-                ))
+                "model", model,
+                "prompt", prompt,
+                "stream", false
         );
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-
-        String url = apiUrl + "?key=" + apiKey;
-
         try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-            return parseGeminiResponse(response.getBody());
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    apiUrl,
+                    new HttpEntity<>(requestBody, headers),
+                    String.class
+            );
+            return parseResponse(response.getBody());
         } catch (Exception e) {
-            log.error("Gemini API error: {}", e.getMessage());
-            throw new RuntimeException("Gemini unavailable", e);
+            log.error("Ollama API error: {}", e.getMessage());
+            throw new RuntimeException("Ollama unavailable", e);
         }
     }
 
@@ -80,45 +80,39 @@ public class GeminiService {
         return sb.toString();
     }
 
-    private List<String> parseGeminiResponse(String responseBody) {
+    public boolean isAvailable() {
+        try {
+            Map<String, Object> requestBody = Map.of(
+                    "model", model,
+                    "prompt", "hi",
+                    "stream", false
+            );
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            ResponseEntity<String> response = restTemplate.postForEntity(
+                    apiUrl, new HttpEntity<>(requestBody, headers), String.class);
+            return response.getStatusCode().is2xxSuccessful();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private List<String> parseResponse(String responseBody) {
         List<String> titles = new ArrayList<>();
         try {
             JsonNode root = objectMapper.readTree(responseBody);
-            String text = root
-                    .path("candidates").get(0)
-                    .path("content")
-                    .path("parts").get(0)
-                    .path("text").asText();
-
+            String text = root.path("response").asText();
             for (String line : text.split("\n")) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
-                
                 line = line.replaceAll("^\\d+[.)\\-]\\s*", "").trim();
                 if (!line.isEmpty()) {
                     titles.add(line);
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to parse Gemini response: {}", e.getMessage());
+            log.error("Failed to parse Ollama response: {}", e.getMessage());
         }
         return titles;
-    }
-
-    public boolean isAvailable() {
-        try {
-            Map<String, Object> requestBody = Map.of(
-                    "contents", List.of(Map.of(
-                            "parts", List.of(Map.of("text", "Say OK"))
-                    ))
-            );
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(apiUrl + "?key=" + apiKey, entity, String.class);
-            return response.getStatusCode().is2xxSuccessful();
-        } catch (Exception e) {
-            return false;
-        }
     }
 }

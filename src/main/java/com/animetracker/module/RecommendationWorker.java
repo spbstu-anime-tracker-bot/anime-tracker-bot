@@ -10,7 +10,7 @@ import com.animetracker.repository.AnimeRepository;
 import com.animetracker.repository.ListViewedRepository;
 import com.animetracker.repository.RecommendationCacheRepository;
 import com.animetracker.repository.RecommendationRequestRepository;
-import com.animetracker.service.GeminiService;
+import com.animetracker.service.OllamaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -26,7 +26,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class RecommendationWorker {
 
-    private final GeminiService geminiService;
+    private final OllamaService ollamaService;
     private final ListViewedRepository listViewedRepository;
     private final AnimeRepository animeRepository;
     private final RecommendationCacheRepository cacheRepository;
@@ -50,12 +50,13 @@ public class RecommendationWorker {
             List<Object[]> ratedAnime = listViewedRepository.findRatedAnimeByUserId(userId);
 
             if (ratedAnime.isEmpty()) {
+                
                 sendResult(event.getRequestId(), userId, "FAILED");
                 updateRequestStatus(reqOpt, "FAILED");
                 return;
             }
 
-            List<String> recommendedTitles = geminiService.getRecommendations(ratedAnime);
+            List<String> recommendedTitles = ollamaService.getRecommendations(ratedAnime);
 
             if (recommendedTitles.isEmpty()) {
                 sendResult(event.getRequestId(), userId, "FAILED");

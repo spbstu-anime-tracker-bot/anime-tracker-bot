@@ -6,6 +6,7 @@ import com.animetracker.entity.RecommendationCache;
 import com.animetracker.entity.RecommendationRequest;
 import com.animetracker.kafka.RecommendationProducer;
 import com.animetracker.repository.AnimeRepository;
+import com.animetracker.repository.ListViewedRepository;
 import com.animetracker.repository.RecommendationCacheRepository;
 import com.animetracker.repository.RecommendationRequestRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,16 +24,35 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdviseModule {
 
+    private static final int POPULAR_FALLBACK_SIZE = 10;
+
     private final RecommendationCacheRepository cacheRepository;
     private final RecommendationRequestRepository requestRepository;
     private final AnimeRepository animeRepository;
+    private final ListViewedRepository listViewedRepository;
     private final RecommendationProducer producer;
+
+    public boolean hasCachedRecommendations(Long userId) {
+        return cacheRepository.existsByUserId(userId);
+    }
 
     public List<Anime> getCachedRecommendations(Long userId) {
         List<RecommendationCache> cached = cacheRepository.findByUserIdOrderByRankPositionAsc(userId);
         if (cached.isEmpty()) return null;
         List<Long> ids = cached.stream().map(RecommendationCache::getAnimeId).collect(Collectors.toList());
-        return animeRepository.findAllById(ids);
+        return animeRepository.findByIdsOrderedByPopularity(ids);
+    }
+
+    public boolean hasRatedAnime(Long userId) {
+        return listViewedRepository.countRatedByUserId(userId) > 0;
+    }
+
+    public boolean isAlreadyProcessing(Long userId) {
+        return requestRepository.existsByUserIdAndStatus(userId, "PROCESSING");
+    }
+
+    public List<Anime> getPopularFallback() {
+        return animeRepository.findTopPopular(POPULAR_FALLBACK_SIZE);
     }
 
     @Transactional
@@ -45,10 +65,7 @@ public class AdviseModule {
         String requestId = UUID.randomUUID().toString();
         try {
             RecommendationRequestEvent event = new RecommendationRequestEvent(
-                    requestId,
-                    userId,
-                    LocalDateTime.now(),
-                    "GENERATE_RECOMMENDATIONS"
+                    requestId, userId, LocalDateTime.now(), "GENERATE_RECOMMENDATIONS"
             );
             producer.sendRecommendationRequest(event);
             req.setStatus("PROCESSING");
@@ -60,9 +77,5 @@ public class AdviseModule {
             requestRepository.save(req);
             return false;
         }
-    }
-
-    public boolean hasCachedRecommendations(Long userId) {
-        return cacheRepository.existsByUserId(userId);
     }
 }

@@ -1,6 +1,6 @@
 package com.animetracker.module;
 
-import com.animetracker.service.GeminiService;
+import com.animetracker.service.OllamaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class HealthCheckModule {
 
     private final JdbcTemplate jdbcTemplate;
-    private final GeminiService geminiService;
+    private final OllamaService ollamaService;
 
     @Value("${spring.kafka.bootstrap-servers}")
     private String kafkaBootstrapServers;
@@ -27,16 +27,16 @@ public class HealthCheckModule {
     public Map<String, String> checkHealth() {
         String postgresql = checkPostgres();
         String kafka = checkKafka();
-        String gemini = checkGemini();
+        String ollama = checkOllama();
 
-        boolean allUp = "UP".equals(postgresql) && "UP".equals(kafka) && "UP".equals(gemini);
+        boolean allUp = "UP".equals(postgresql) && "UP".equals(kafka) && "UP".equals(ollama);
         String overall = allUp ? "UP" : "DEGRADED";
 
         return Map.of(
                 "status", overall,
                 "postgresql", postgresql,
                 "kafka", kafka,
-                "gemini", gemini
+                "ollama", ollama
         );
     }
 
@@ -63,9 +63,9 @@ public class HealthCheckModule {
         }
     }
 
-    private String checkGemini() {
+    private String checkOllama() {
         try {
-            return geminiService.isAvailable() ? "UP" : "DOWN";
+            return ollamaService.isAvailable() ? "UP" : "DOWN";
         } catch (Exception e) {
             return "DOWN";
         }

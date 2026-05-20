@@ -53,7 +53,7 @@ public class Anime {
     @Column(name = "synopsis", columnDefinition = "TEXT")
     private String synopsis;
 
-    @OneToMany(mappedBy = "anime", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "anime", fetch = FetchType.EAGER)
     private List<AnimeGenre> animeGenres;
 
     public double getPopularityMetric() {

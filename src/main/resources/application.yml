@@ -8,11 +8,12 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
     properties:
       hibernate:
         globally_quoted_identifiers: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        default_schema: anime
     show-sql: false
 
   kafka:
@@ -36,11 +37,11 @@ telegram:
     token: ${TELEGRAM_BOT_TOKEN:your-token-here}
     username: ${TELEGRAM_BOT_USERNAME:your-bot-username}
 
-gemini:
+ollama:
   api:
-    key: ${GEMINI_API_KEY:your-gemini-api-key}
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
-    timeout-seconds: 60
+    url: ${OLLAMA_URL:http://host.docker.internal:11434/api/generate}
+    model: ${OLLAMA_MODEL:gemma3}
+    timeout-seconds: 120
 
 admin:
   token: ${ADMIN_API_TOKEN:admin-secret-token}

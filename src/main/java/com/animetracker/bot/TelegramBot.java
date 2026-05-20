@@ -8,22 +8,30 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.longpolling.BotSession;
+import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
+import org.telegram.telegrambots.longpolling.starter.AfterBotRegistration;
+import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageReplyMarkup;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
-import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
 @Component
-public class TelegramBot extends TelegramLongPollingBot {
+public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsumer {
+
+    private final TelegramClient telegramClient;
+    private final String botToken;
 
     private final AuthUserModule authUserModule;
     private final SearchAnimeModule searchAnimeModule;
@@ -34,11 +42,8 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final AdviseModule adviseModule;
     private final UserSessionService sessionService;
 
-    private final String botUsername;
-
     public TelegramBot(
-            @Value("${telegram.bot.token}") String token,
-            @Value("${telegram.bot.username}") String botUsername,
+            @Value("${telegram.bot.token}") String botToken,
             AuthUserModule authUserModule,
             SearchAnimeModule searchAnimeModule,
             DisplayCardsModule displayCardsModule,
@@ -47,8 +52,8 @@ public class TelegramBot extends TelegramLongPollingBot {
             RateAnimeModule rateAnimeModule,
             AdviseModule adviseModule,
             UserSessionService sessionService) {
-        super(token);
-        this.botUsername = botUsername;
+        this.botToken = botToken;
+        this.telegramClient = new OkHttpTelegramClient(botToken);
         this.authUserModule = authUserModule;
         this.searchAnimeModule = searchAnimeModule;
         this.displayCardsModule = displayCardsModule;
@@ -60,12 +65,26 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     @Override
-    public String getBotUsername() {
-        return botUsername;
+    public String getBotToken() {
+        return botToken;
     }
 
     @Override
-    public void onUpdateReceived(Update update) {
+    public LongPollingUpdateConsumer getUpdatesConsumer() {
+        return this;
+    }
+
+    @Override
+    public void consume(List<Update> updates) {
+        updates.forEach(this::handleUpdate);
+    }
+
+    @AfterBotRegistration
+    public void afterRegistration(BotSession botSession) {
+        log.info("Anime Tracker Bot registered successfully");
+    }
+
+    private void handleUpdate(Update update) {
         try {
             if (update.hasCallbackQuery()) {
                 handleCallback(update.getCallbackQuery());
@@ -77,20 +96,19 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    // ─── Message handling ────────────────────────────────────────────────────
+
     private void handleMessage(Message message) {
         Long userId = message.getFrom().getId();
         Long chatId = message.getChatId();
         String text = message.getText().trim();
         String firstName = message.getFrom().getFirstName();
 
-        // Ensure user is registered
         authUserModule.registerOrGet(userId, firstName);
 
-        // Check if user is awaiting rating input (handled via buttons, but just in case)
-        UserSession session = sessionService.get(userId);
-
         if (text.startsWith("/start")) {
-            send(chatId, "👋 Привет, " + firstName + "! Добро пожаловать в Anime Tracker Bot.\n\n" +
+            send(chatId,
+                    "👋 Привет, " + firstName + "! Добро пожаловать в Anime Tracker Bot.\n\n" +
                     "Команды:\n" +
                     "/search <название> — поиск аниме\n" +
                     "/search_by <параметры> — расширенный поиск (жанр, тип, год)\n" +
@@ -147,7 +165,10 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    // ─── Advise ──────────────────────────────────────────────────────────────
+
     private void handleAdvise(Long userId, Long chatId) {
+        // Если кэш актуален — отдаём сразу
         if (adviseModule.hasCachedRecommendations(userId)) {
             List<Anime> cached = adviseModule.getCachedRecommendations(userId);
             if (cached != null && !cached.isEmpty()) {
@@ -157,7 +178,21 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
         }
 
-        send(chatId, "⏳ Формируем рекомендации... Это займет немного времени.");
+        // Нет оценок — показываем самые популярные
+        if (!adviseModule.hasRatedAnime(userId)) {
+            send(chatId, "У вас пока нет оценок. Показываем самые популярные аниме:");
+            sendResults(userId, chatId, adviseModule.getPopularFallback());
+            return;
+        }
+
+        // Уже обрабатывается — не дублируем запрос
+        if (adviseModule.isAlreadyProcessing(userId)) {
+            send(chatId, "⏳ Рекомендации уже формируются. Пожалуйста, подождите.");
+            return;
+        }
+
+        // Есть оценки — генерируем через Ollama + Kafka
+        send(chatId, "⏳ Формируем рекомендации на основе ваших оценок... Это займёт немного времени.");
         boolean sent = adviseModule.requestNewRecommendations(userId);
         if (!sent) {
             send(chatId, "Функция временно недоступна. Попробуйте повторить запрос через некоторое время");
@@ -183,6 +218,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
+    // ─── Callback handling ───────────────────────────────────────────────────
+
     private void handleCallback(CallbackQuery callbackQuery) {
         Long userId = callbackQuery.getFrom().getId();
         Long chatId = callbackQuery.getMessage().getChatId();
@@ -195,19 +232,16 @@ public class TelegramBot extends TelegramLongPollingBot {
             answerCallback(callbackQuery.getId(), "");
             return;
         }
-
         if ("np".equals(data)) {
             navigatePage(userId, chatId, true);
             answerCallback(callbackQuery.getId(), "");
             return;
         }
-
         if ("pp".equals(data)) {
             navigatePage(userId, chatId, false);
             answerCallback(callbackQuery.getId(), "");
             return;
         }
-
         if (data.startsWith("av:")) {
             Long animeId = Long.parseLong(data.substring(3));
             String result = manageUserListsModule.addToViewed(userId, animeId);
@@ -215,7 +249,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             refreshCard(userId, chatId, messageId, animeId);
             return;
         }
-
         if (data.startsWith("rv:")) {
             Long animeId = Long.parseLong(data.substring(3));
             String result = manageUserListsModule.removeFromViewed(userId, animeId);
@@ -223,7 +256,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             refreshCard(userId, chatId, messageId, animeId);
             return;
         }
-
         if (data.startsWith("at:")) {
             Long animeId = Long.parseLong(data.substring(3));
             String result = manageUserListsModule.addToToView(userId, animeId);
@@ -231,7 +263,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             refreshCard(userId, chatId, messageId, animeId);
             return;
         }
-
         if (data.startsWith("rt:")) {
             Long animeId = Long.parseLong(data.substring(3));
             String result = manageUserListsModule.removeFromToView(userId, animeId);
@@ -239,7 +270,6 @@ public class TelegramBot extends TelegramLongPollingBot {
             refreshCard(userId, chatId, messageId, animeId);
             return;
         }
-
         if (data.startsWith("ra:")) {
             Long animeId = Long.parseLong(data.substring(3));
             if (!manageUserListsModule.isInViewed(userId, animeId)) {
@@ -248,19 +278,17 @@ public class TelegramBot extends TelegramLongPollingBot {
             }
             sessionService.setAwaitingRating(userId, data.substring(3));
             try {
-                EditMessageReplyMarkup edit = EditMessageReplyMarkup.builder()
-                        .chatId(chatId.toString())
+                telegramClient.execute(EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
                         .messageId(messageId)
                         .replyMarkup(displayCardsModule.buildRatingKeyboard(animeId))
-                        .build();
-                execute(edit);
-            } catch (TelegramApiException e) {
-                log.error("Error showing rating keyboard: {}", e.getMessage());
+                        .build());
+            } catch (Exception e) {
+                log.warn("Error showing rating keyboard: {}", e.getMessage());
             }
             answerCallback(callbackQuery.getId(), "Выберите оценку:");
             return;
         }
-
         if (data.startsWith("rs:")) {
             String[] parts = data.substring(3).split(":");
             Long animeId = Long.parseLong(parts[0]);
@@ -271,32 +299,29 @@ public class TelegramBot extends TelegramLongPollingBot {
             refreshCard(userId, chatId, messageId, animeId);
             return;
         }
-
         answerCallback(callbackQuery.getId(), "");
     }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────
 
     private void refreshCard(Long userId, Long chatId, Integer messageId, Long animeId) {
         UserSession session = sessionService.get(userId);
         if (session == null) return;
-
         Anime anime = session.getResults().stream()
-                .filter(a -> a.getId().equals(animeId))
-                .findFirst().orElse(null);
+                .filter(a -> a.getId().equals(animeId)).findFirst().orElse(null);
         if (anime == null) return;
 
         boolean inViewed = manageUserListsModule.isInViewed(userId, animeId);
         boolean inToView = manageUserListsModule.isInToView(userId, animeId);
-
         try {
-            EditMessageText edit = EditMessageText.builder()
-                    .chatId(chatId.toString())
+            telegramClient.execute(EditMessageText.builder()
+                    .chatId(chatId)
                     .messageId(messageId)
                     .text(displayCardsModule.buildCardText(anime))
                     .parseMode("Markdown")
                     .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
-                    .build();
-            execute(edit);
-        } catch (TelegramApiException e) {
+                    .build());
+        } catch (Exception e) {
             log.warn("Could not edit message: {}", e.getMessage());
         }
     }
@@ -313,52 +338,73 @@ public class TelegramBot extends TelegramLongPollingBot {
             return;
         }
 
-        // Edit existing card messages
         List<Anime> pageItems = session.getCurrentPageItems();
-        List<Integer> cardIds = session.getCardMessageIds();
+        List<Integer> cardIds = new ArrayList<>(session.getCardMessageIds());
+        int oldSize = cardIds.size();
+        int newSize = pageItems.size();
 
-        for (int i = 0; i < cardIds.size(); i++) {
+        // Edit slots that exist in both old and new page
+        for (int i = 0; i < Math.min(newSize, oldSize); i++) {
             try {
-                if (i < pageItems.size()) {
-                    Anime anime = pageItems.get(i);
-                    boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
-                    boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
-
-                    EditMessageText edit = EditMessageText.builder()
-                            .chatId(chatId.toString())
-                            .messageId(cardIds.get(i))
-                            .text(displayCardsModule.buildCardText(anime))
-                            .parseMode("Markdown")
-                            .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
-                            .build();
-                    execute(edit);
-                } else {
-                    // Fewer items on this page — clear the message
-                    EditMessageText edit = EditMessageText.builder()
-                            .chatId(chatId.toString())
-                            .messageId(cardIds.get(i))
-                            .text("—")
-                            .build();
-                    execute(edit);
-                }
-            } catch (TelegramApiException e) {
-                log.warn("Could not edit card message: {}", e.getMessage());
+                Anime anime = pageItems.get(i);
+                boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
+                boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+                telegramClient.execute(EditMessageText.builder()
+                        .chatId(chatId)
+                        .messageId(cardIds.get(i))
+                        .text(displayCardsModule.buildCardText(anime))
+                        .parseMode("Markdown")
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .build());
+            } catch (Exception e) {
+                log.warn("Could not edit card: {}", e.getMessage());
             }
         }
 
-        // Edit nav message
+        // Delete surplus messages when new page has fewer items
+        for (int i = oldSize - 1; i >= newSize; i--) {
+            try {
+                telegramClient.execute(DeleteMessage.builder()
+                        .chatId(chatId)
+                        .messageId(cardIds.get(i))
+                        .build());
+                cardIds.remove(i);
+            } catch (Exception e) {
+                log.warn("Could not delete card: {}", e.getMessage());
+            }
+        }
+
+        // Send new messages when new page has more items than available slots
+        for (int i = oldSize; i < newSize; i++) {
+            try {
+                Anime anime = pageItems.get(i);
+                boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
+                boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+                Message sent = telegramClient.execute(SendMessage.builder()
+                        .chatId(chatId)
+                        .text(displayCardsModule.buildCardText(anime))
+                        .parseMode("Markdown")
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .build());
+                cardIds.add(sent.getMessageId());
+            } catch (Exception e) {
+                log.error("Error sending new card: {}", e.getMessage());
+            }
+        }
+
+        session.setCardMessageIds(cardIds);
+
         if (session.getNavMessageId() != null) {
             try {
-                EditMessageReplyMarkup editNav = EditMessageReplyMarkup.builder()
-                        .chatId(chatId.toString())
+                telegramClient.execute(EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
                         .messageId(session.getNavMessageId())
                         .replyMarkup(displayCardsModule.buildNavKeyboard(
                                 session.hasPrevPage(), session.hasNextPage(),
                                 session.getCurrentPage(), session.getTotalPages()))
-                        .build();
-                execute(editNav);
-            } catch (TelegramApiException e) {
-                log.warn("Could not edit nav message: {}", e.getMessage());
+                        .build());
+            } catch (Exception e) {
+                log.warn("Could not edit nav: {}", e.getMessage());
             }
         }
     }
@@ -368,71 +414,63 @@ public class TelegramBot extends TelegramLongPollingBot {
             send(chatId, "Аниме не найдены");
             return;
         }
-
         sessionService.setResults(userId, results, chatId);
         UserSession session = sessionService.get(userId);
-
         List<Anime> pageItems = session.getCurrentPageItems();
         List<Integer> cardMessageIds = new ArrayList<>();
 
         for (Anime anime : pageItems) {
             boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
             boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
-
-            SendMessage msg = SendMessage.builder()
-                    .chatId(chatId.toString())
-                    .text(displayCardsModule.buildCardText(anime))
-                    .parseMode("Markdown")
-                    .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
-                    .build();
-
             try {
-                Message sent = execute(msg);
+                Message sent = telegramClient.execute(SendMessage.builder()
+                        .chatId(chatId)
+                        .text(displayCardsModule.buildCardText(anime))
+                        .parseMode("Markdown")
+                        .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView))
+                        .build());
                 cardMessageIds.add(sent.getMessageId());
-            } catch (TelegramApiException e) {
+            } catch (Exception e) {
                 log.error("Error sending card: {}", e.getMessage());
             }
         }
-
         session.setCardMessageIds(cardMessageIds);
 
-        // Send navigation message if more than one page
         if (session.getTotalPages() > 1) {
-            SendMessage navMsg = SendMessage.builder()
-                    .chatId(chatId.toString())
-                    .text("Страница " + (session.getCurrentPage() + 1) + " из " + session.getTotalPages())
-                    .replyMarkup(displayCardsModule.buildNavKeyboard(
-                            session.hasPrevPage(), session.hasNextPage(),
-                            session.getCurrentPage(), session.getTotalPages()))
-                    .build();
             try {
-                Message sentNav = execute(navMsg);
+                Message sentNav = telegramClient.execute(SendMessage.builder()
+                        .chatId(chatId)
+                        .text("Страница " + (session.getCurrentPage() + 1) + " из " + session.getTotalPages())
+                        .replyMarkup(displayCardsModule.buildNavKeyboard(
+                                session.hasPrevPage(), session.hasNextPage(),
+                                session.getCurrentPage(), session.getTotalPages()))
+                        .build());
                 session.setNavMessageId(sentNav.getMessageId());
-            } catch (TelegramApiException e) {
+            } catch (Exception e) {
                 log.error("Error sending nav: {}", e.getMessage());
             }
         }
     }
 
-    private void send(Long chatId, String text) {
+    public void send(Long chatId, String text) {
         try {
-            execute(SendMessage.builder()
-                    .chatId(chatId.toString())
+            telegramClient.execute(SendMessage.builder()
+                    .chatId(chatId)
                     .text(text)
                     .build());
-        } catch (TelegramApiException e) {
+        } catch (Exception e) {
             log.error("Error sending message: {}", e.getMessage());
         }
     }
 
     private void answerCallback(String callbackId, String text) {
         try {
-            execute(org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery.builder()
+            telegramClient.execute(AnswerCallbackQuery.builder()
                     .callbackQueryId(callbackId)
                     .text(text)
                     .showAlert(false)
                     .build());
-        } catch (TelegramApiException e) {
+        } catch (Exception e) {
             log.warn("Error answering callback: {}", e.getMessage());
         }
     }
