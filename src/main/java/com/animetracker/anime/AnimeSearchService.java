@@ -42,7 +42,7 @@ public class AnimeSearchService {
             } else if (isGenre(part)) {
                 genre = part;
             } else {
-                return SearchResult.error("Р’РІРµРґС‘РЅ РЅРµСЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєСЂРёС‚РµСЂРёР№ вЂ” '" + part + "'");
+                return SearchResult.error("Введён несуществующий критерий — '" + part + "'");
             }
         }
 

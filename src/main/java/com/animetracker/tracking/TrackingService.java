@@ -24,7 +24,7 @@ public class TrackingService {
     @Transactional
     public String addToViewed(Long userId, Long animeId) {
         if (listViewedRepository.existsByUserIdAndAnimeId(userId, animeId)) {
-            return "РђРЅРёРјРµ СѓР¶Рµ РІ СЃРїРёСЃРєРµ РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹С….";
+            return "Аниме уже в списке просмотренных.";
         }
         ListViewed entry = new ListViewed();
         entry.setUserId(userId);
@@ -32,43 +32,43 @@ public class TrackingService {
         listViewedRepository.save(entry);
         listToViewRepository.findByUserIdAndAnimeId(userId, animeId)
                 .ifPresent(listToViewRepository::delete);
-        return "вњ… Р”РѕР±Р°РІР»РµРЅРѕ РІ РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹Рµ.";
+        return "✅ Добавлено в просмотренные.";
     }
 
     @Transactional
     public String removeFromViewed(Long userId, Long animeId) {
         return listViewedRepository.findByUserIdAndAnimeId(userId, animeId).map(entry -> {
             listViewedRepository.delete(entry);
-            return "рџ—‘ РЈРґР°Р»РµРЅРѕ РёР· РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹С….";
-        }).orElse("РђРЅРёРјРµ РЅРµ РЅР°Р№РґРµРЅРѕ РІ СЃРїРёСЃРєРµ РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹С….");
+            return "🗑 Удалено из просмотренных.";
+        }).orElse("Аниме не найдено в списке просмотренных.");
     }
 
     @Transactional
     public String addToToView(Long userId, Long animeId) {
         if (listViewedRepository.existsByUserIdAndAnimeId(userId, animeId)) {
-            return "РђРЅРёРјРµ СѓР¶Рµ РІ СЃРїРёСЃРєРµ РїСЂРѕСЃРјРѕС‚СЂРµРЅРЅС‹С…. РЎРЅР°С‡Р°Р»Р° СѓРґР°Р»РёС‚Рµ РµРіРѕ РѕС‚С‚СѓРґР°.";
+            return "Аниме уже в списке просмотренных. Сначала удалите его оттуда.";
         }
         if (listToViewRepository.existsByUserIdAndAnimeId(userId, animeId)) {
-            return "РђРЅРёРјРµ СѓР¶Рµ РІ СЃРїРёСЃРєРµ РѕС‚СЃР»РµР¶РёРІР°РµРјС‹С….";
+            return "Аниме уже в списке отслеживаемых.";
         }
         ListToView entry = new ListToView();
         entry.setUserId(userId);
         entry.setAnimeId(animeId);
         listToViewRepository.save(entry);
-        return "рџ“Њ Р”РѕР±Р°РІР»РµРЅРѕ РІ РѕС‚СЃР»РµР¶РёРІР°РµРјС‹Рµ.";
+        return "📌 Добавлено в отслеживаемые.";
     }
 
     @Transactional
     public String removeFromToView(Long userId, Long animeId) {
         return listToViewRepository.findByUserIdAndAnimeId(userId, animeId).map(entry -> {
             listToViewRepository.delete(entry);
-            return "рџ—‘ РЈРґР°Р»РµРЅРѕ РёР· РѕС‚СЃР»РµР¶РёРІР°РµРјС‹С….";
-        }).orElse("РђРЅРёРјРµ РЅРµ РЅР°Р№РґРµРЅРѕ РІ СЃРїРёСЃРєРµ РѕС‚СЃР»РµР¶РёРІР°РµРјС‹С….");
+            return "🗑 Удалено из отслеживаемых.";
+        }).orElse("Аниме не найдено в списке отслеживаемых.");
     }
 
     @Transactional
     public String rate(Long userId, Long animeId, int score) {
-        if (score < 1 || score > 10) return "РћС†РµРЅРєР° РґРѕР»Р¶РЅР° Р±С‹С‚СЊ РѕС‚ 1 РґРѕ 10.";
+        if (score < 1 || score > 10) return "Оценка должна быть от 1 до 10.";
         ListViewed entry = listViewedRepository.findByUserIdAndAnimeId(userId, animeId)
                 .orElseGet(() -> {
                     ListViewed e = new ListViewed();
@@ -78,7 +78,7 @@ public class TrackingService {
                 });
         entry.setUserScore(score);
         listViewedRepository.save(entry);
-        return "в­ђ РћС†РµРЅРєР° " + score + "/10 СЃРѕС…СЂР°РЅРµРЅР°.";
+        return "⭐ Оценка " + score + "/10 сохранена.";
     }
 
     public boolean isInViewed(Long userId, Long animeId) {
