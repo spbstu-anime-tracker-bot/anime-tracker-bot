@@ -1,9 +1,8 @@
 package com.animetracker.bot;
 
-import com.animetracker.dto.RecommendationReadyAppEvent;
-import com.animetracker.entity.Anime;
+import com.animetracker.anime.Anime;
 import com.animetracker.module.*;
-import com.animetracker.service.UserSessionService;
+import com.animetracker.recommendation.RecommendationReadyEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
@@ -96,7 +95,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         }
     }
 
-    // ─── Message handling ────────────────────────────────────────────────────
+
 
     private void handleMessage(Message message) {
         Long userId = message.getFrom().getId();
@@ -165,10 +164,10 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         }
     }
 
-    // ─── Advise ──────────────────────────────────────────────────────────────
+
 
     private void handleAdvise(Long userId, Long chatId) {
-        // Если кэш актуален — отдаём сразу
+
         if (adviseModule.hasCachedRecommendations(userId)) {
             List<Anime> cached = adviseModule.getCachedRecommendations(userId);
             if (cached != null && !cached.isEmpty()) {
@@ -178,20 +177,20 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
             }
         }
 
-        
+
         if (!adviseModule.hasWatchedAnime(userId)) {
             send(chatId, "У вас пока нет просмотренных аниме. Показываем самые популярные:");
             sendResults(userId, chatId, adviseModule.getPopularFallback());
             return;
         }
 
-        // Уже обрабатывается — не дублируем запрос
+
         if (adviseModule.isAlreadyProcessing(userId)) {
             send(chatId, "⏳ Рекомендации уже формируются. Пожалуйста, подождите.");
             return;
         }
 
-        // Есть оценки — генерируем через Ollama + Kafka
+
         send(chatId, "⏳ Формируем рекомендации на основе ваших оценок... Это займёт немного времени.");
         boolean sent = adviseModule.requestNewRecommendations(userId);
         if (!sent) {
@@ -200,7 +199,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
     }
 
     @EventListener
-    public void onRecommendationReady(RecommendationReadyAppEvent event) {
+    public void onRecommendationReady(RecommendationReadyEvent event) {
         Long userId = event.getTelegramId();
         UserSession session = sessionService.get(userId);
         Long chatId = session != null ? session.getChatId() : userId;
@@ -218,7 +217,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         }
     }
 
-    // ─── Callback handling ───────────────────────────────────────────────────
+
 
     private void handleCallback(CallbackQuery callbackQuery) {
         Long userId = callbackQuery.getFrom().getId();
@@ -302,7 +301,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         answerCallback(callbackQuery.getId(), "");
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+
 
     private void refreshCard(Long userId, Long chatId, Integer messageId, Long animeId) {
         UserSession session = sessionService.get(userId);
@@ -344,7 +343,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
         int oldSize = cardIds.size();
         int newSize = pageItems.size();
 
-        // Edit slots that exist in both old and new page
+
         for (int i = 0; i < Math.min(newSize, oldSize); i++) {
             try {
                 Anime anime = pageItems.get(i);
@@ -363,7 +362,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
             }
         }
 
-        // Delete surplus messages when new page has fewer items
+
         for (int i = oldSize - 1; i >= newSize; i--) {
             try {
                 telegramClient.execute(DeleteMessage.builder()
@@ -376,7 +375,7 @@ public class TelegramBot implements SpringLongPollingBot, LongPollingUpdateConsu
             }
         }
 
-        // Send new messages when new page has more items than available slots
+
         for (int i = oldSize; i < newSize; i++) {
             try {
                 Anime anime = pageItems.get(i);

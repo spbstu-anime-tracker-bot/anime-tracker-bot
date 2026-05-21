@@ -1,6 +1,6 @@
 package com.animetracker.controller;
 
-import com.animetracker.dto.UserStatsDto;
+import com.animetracker.admin.UserStatsDto;
 import com.animetracker.module.ListUsersModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

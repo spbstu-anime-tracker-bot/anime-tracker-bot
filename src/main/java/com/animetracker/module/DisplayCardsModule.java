@@ -1,7 +1,6 @@
 package com.animetracker.module;
 
-import com.animetracker.entity.Anime;
-import com.animetracker.entity.AnimeGenre;
+import com.animetracker.anime.Anime;
 import org.springframework.stereotype.Service;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;

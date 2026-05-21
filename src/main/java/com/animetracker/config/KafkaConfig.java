@@ -1,7 +1,7 @@
 package com.animetracker.config;
 
-import com.animetracker.dto.RecommendationRequestEvent;
-import com.animetracker.dto.RecommendationResultEvent;
+import com.animetracker.recommendation.RecommendationRequestEvent;
+import com.animetracker.recommendation.RecommendationResultEvent;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -16,6 +16,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
+
 
 @Configuration
 public class KafkaConfig {

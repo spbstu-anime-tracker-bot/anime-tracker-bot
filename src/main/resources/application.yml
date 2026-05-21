@@ -29,8 +29,8 @@ spring:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
       properties:
-        spring.json.trusted.packages: "com.animetracker.dto"
-        spring.json.value.default.type: "com.animetracker.dto.RecommendationRequestEvent"
+        spring.json.trusted.packages: "com.animetracker.recommendation"
+        spring.json.value.default.type: "com.animetracker.recommendation.RecommendationRequestEvent"
 
 telegram:
   bot:

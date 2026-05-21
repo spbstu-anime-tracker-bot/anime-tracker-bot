@@ -1,6 +1,6 @@
 package com.animetracker.bot;
 
-import com.animetracker.entity.Anime;
+import com.animetracker.anime.Anime;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -13,7 +13,7 @@ public class UserSession {
     private List<Integer> cardMessageIds = new ArrayList<>();
     private Integer navMessageId;
     private Long chatId;
-    private String awaitingRatingForAnimeId; 
+    private String awaitingRatingForAnimeId;
 
     public static final int PAGE_SIZE = 5;
 

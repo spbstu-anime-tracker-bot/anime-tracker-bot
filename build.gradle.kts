@@ -1,5 +1,5 @@
 plugins {
-    id("org.springframework.boot") version "3.5.0"
+    id("org.springframework.boot") version "3.5.3"
     id("io.spring.dependency-management") version "1.1.7"
     java
 }
@@ -31,6 +31,11 @@ dependencies {
     implementation("org.telegram:telegrambots-client:7.11.0")
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+
+    implementation(platform("org.springframework.modulith:spring-modulith-bom:1.4.1"))
+    implementation("org.springframework.modulith:spring-modulith-starter-core")
+    implementation("org.springframework.modulith:spring-modulith-starter-jpa")
+    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
 
     runtimeOnly("org.postgresql:postgresql")
     compileOnly("org.projectlombok:lombok")

@@ -1,84 +1,28 @@
 package com.animetracker.module;
 
-import com.animetracker.entity.Anime;
-import com.animetracker.repository.AnimeRepository;
-import com.animetracker.repository.GenreRepository;
+import com.animetracker.anime.Anime;
+import com.animetracker.anime.AnimeSearchService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SearchAnimeModule {
 
-    private static final Set<String> KNOWN_TYPES = Set.of(
-            "tv", "movie", "ova", "ona", "special", "music"
-    );
-
-    private final AnimeRepository animeRepository;
-    private final GenreRepository genreRepository;
+    private final AnimeSearchService animeSearchService;
 
     public List<Anime> searchByTitle(String query) {
-        return animeRepository.searchByTitle(query.trim());
+        return animeSearchService.searchByTitle(query);
     }
 
     public SearchResult searchByFilters(String params) {
-        String[] parts = Arrays.stream(params.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toArray(String[]::new);
-
-        String genre = null;
-        String type = null;
-        Integer year = null;
-
-        for (String part : parts) {
-            if (isYear(part)) {
-                year = Integer.parseInt(part);
-            } else if (isType(part)) {
-                type = part.toUpperCase();
-            } else if (isGenre(part)) {
-                genre = part;
-            } else {
-                return SearchResult.error("Введён несуществующий критерий — '" + part + "'");
-            }
-        }
-
-        List<Anime> results = animeRepository.searchByFilters(genre, type, year);
-        return SearchResult.success(results);
-    }
-
-    private boolean isYear(String s) {
-        try {
-            int y = Integer.parseInt(s);
-            return y >= 1900 && y <= 2030;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    private boolean isType(String s) {
-        return KNOWN_TYPES.contains(s.toLowerCase());
-    }
-
-    private boolean isGenre(String s) {
-        return genreRepository.findByNameIgnoreCase(s).isPresent();
+        AnimeSearchService.SearchResult result = animeSearchService.searchByFilters(params);
+        return new SearchResult(result.anime(), result.errorMessage());
     }
 
     public record SearchResult(List<Anime> anime, String errorMessage) {
-        public static SearchResult success(List<Anime> anime) {
-            return new SearchResult(anime, null);
-        }
-
-        public static SearchResult error(String message) {
-            return new SearchResult(null, message);
-        }
-
         public boolean isError() {
             return errorMessage != null;
         }
