@@ -18,11 +18,10 @@ Telegram-бот для ведения списков аниме и получе�
 | Технология | Версия | Назначение |
 |---|---|---|
 | Java | 25 | Язык разработки |
-| Spring Boot | 3.5.3 | Фреймворк приложения |
-| Spring Framework | 6.2.8 | Core, MVC, JPA, Events |
+| Spring Framework | 7.0.7 | Core, MVC, JPA, Events |
 | Spring REST (Spring MVC) | 6.2.8 | REST API (`/health`, `/admin/users`) |
 | Spring JPA + Hibernate | 6.6.x | ORM, работа с PostgreSQL |
-| Spring Modulith | 1.4.1 | Модульная архитектура |
+| Spring Modulith | 2.0.6 | Модульная архитектура |
 | PostgreSQL | 17 | Основная база данных |
 | Apache Kafka | 7.6.0 | Асинхронная обработка рекомендаций |
 | Ollama | 0.24.0 | Локальная LLM (модель gemma3) |
@@ -32,6 +31,7 @@ Telegram-бот для ведения списков аниме и получе�
 ## Архитектура модулей (Spring Modulith)
 
 Приложение разбито на 9 модулей:
+
 
 ```
 anime          — каталог аниме (Spring JPA + Hibernate)

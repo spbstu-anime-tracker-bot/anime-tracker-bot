@@ -1,6 +1,6 @@
 package com.animetracker.module;
 
-import com.animetracker.service.OllamaService;
+import com.animetracker.llm.LlmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class HealthCheckModule {
 
     private final JdbcTemplate jdbcTemplate;
-    private final OllamaService ollamaService;
+    private final LlmService llmService;
 
     @Value("${spring.kafka.bootstrap-servers}")
     private String kafkaBootstrapServers;
@@ -65,7 +65,7 @@ public class HealthCheckModule {
 
     private String checkOllama() {
         try {
-            return ollamaService.isAvailable() ? "UP" : "DOWN";
+            return llmService.isAvailable() ? "UP" : "DOWN";
         } catch (Exception e) {
             return "DOWN";
         }

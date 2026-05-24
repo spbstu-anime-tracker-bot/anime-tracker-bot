@@ -32,7 +32,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
-    implementation(platform("org.springframework.modulith:spring-modulith-bom:1.4.1"))
+    implementation(platform("org.springframework.modulith:spring-modulith-bom:2.0.6"))
     implementation("org.springframework.modulith:spring-modulith-starter-core")
     implementation("org.springframework.modulith:spring-modulith-starter-jpa")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
