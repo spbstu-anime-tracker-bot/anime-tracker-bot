@@ -16,7 +16,7 @@ import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import java.util.Properties;
 
 @Configuration
-@Import({DatabaseConfig.class, JacksonConfig.class})
+@Import({DatabaseConfig.class, JacksonConfig.class, KafkaConfig.class})
 @ComponentScan(
         basePackageClasses = {
                 TelegramBot.class,
@@ -31,10 +31,7 @@ import java.util.Properties;
                 pattern = {
                         "com\\.animetracker\\.llm\\..*",
                         "com\\.animetracker\\.module\\.AdviseModule",
-                        "com\\.animetracker\\.module\\.HealthCheckModule",
-                        "com\\.animetracker\\.module\\.RecommendationWorker",
-                        "com\\.animetracker\\.recommendation\\.internal\\.RecommendationProducer",
-                        "com\\.animetracker\\.recommendation\\.internal\\.RecommendationResultConsumer"
+                        "com\\.animetracker\\.module\\.HealthCheckModule"
                 }
         )
 )
@@ -51,6 +48,9 @@ public class AppConfig {
         properties.setProperty("spring.datasource.driver-class-name", "org.postgresql.Driver");
         properties.setProperty("spring.jpa.hibernate.ddl-auto", "none");
         properties.setProperty("spring.jpa.show-sql", "false");
+        properties.setProperty("spring.kafka.bootstrap-servers", env("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"));
+        properties.setProperty("kafka.topics.recommendation-requests", "recommendation.requests");
+        properties.setProperty("kafka.topics.recommendation-results", "recommendation.results");
 
         PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
         configurer.setProperties(properties);

@@ -10,11 +10,13 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
@@ -25,6 +27,7 @@ import java.util.Map;
 
 
 @Configuration
+@EnableKafka
 public class KafkaConfig {
 
     @Value("${spring.kafka.bootstrap-servers}")
@@ -35,6 +38,11 @@ public class KafkaConfig {
 
     @Value("${kafka.topics.recommendation-results}")
     private String resultsTopic;
+
+    @Bean
+    public KafkaAdmin kafkaAdmin() {
+        return new KafkaAdmin(Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers));
+    }
 
     @Bean
     public NewTopic recommendationRequestsTopic() {

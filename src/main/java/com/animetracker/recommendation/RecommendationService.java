@@ -5,7 +5,7 @@ import com.animetracker.anime.AnimeSearchService;
 // import com.animetracker.llm.LlmService;
 import com.animetracker.recommendation.internal.RecommendationCache;
 import com.animetracker.recommendation.internal.RecommendationCacheRepository;
-// import com.animetracker.recommendation.internal.RecommendationProducer;
+import com.animetracker.recommendation.internal.RecommendationProducer;
 import com.animetracker.recommendation.internal.RecommendationRequest;
 import com.animetracker.recommendation.internal.RecommendationRequestRepository;
 import com.animetracker.tracking.TrackingService;
@@ -14,8 +14,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,7 +32,7 @@ public class RecommendationService {
     private final AnimeSearchService animeSearchService;
     private final TrackingService trackingService;
     // private final LlmService llmService;
-    // private final RecommendationProducer producer;
+    private final RecommendationProducer producer;
 
     public boolean hasCachedRecommendations(Long userId) {
         return cacheRepository.existsByUserId(userId);
@@ -59,11 +61,9 @@ public class RecommendationService {
     public boolean requestNewRecommendations(Long userId) {
         RecommendationRequest req = new RecommendationRequest();
         req.setUserId(userId);
-        req.setStatus("DISABLED");
+        req.setStatus("CREATED");
         requestRepository.save(req);
-        return false;
 
-        /*
         String requestId = UUID.randomUUID().toString();
         try {
             RecommendationRequestEvent event = new RecommendationRequestEvent(
@@ -79,13 +79,10 @@ public class RecommendationService {
             requestRepository.save(req);
             return false;
         }
-        */
     }
 
     @Transactional
     public void processRecommendation(RecommendationRequestEvent event) {
-        log.info("Disabled for {}", event.getTelegramId());
-
         /*
         Long userId = event.getTelegramId();
         log.info("Processing recommendation for user {}", userId);
@@ -152,13 +149,11 @@ public class RecommendationService {
 
     private void fail(RecommendationRequestEvent event, Optional<RecommendationRequest> reqOpt) {
         updateRequestStatus(reqOpt, "FAILED");
-        // sendResult(event.getRequestId(), event.getTelegramId(), "FAILED");
+        sendResult(event.getRequestId(), event.getTelegramId(), "FAILED");
     }
 
     private void sendResult(String requestId, Long userId, String status) {
-        /*
         producer.sendRecommendationResult(new RecommendationResultEvent(requestId, userId, status));
-        */
     }
 
     private void updateRequestStatus(Optional<RecommendationRequest> reqOpt, String status) {

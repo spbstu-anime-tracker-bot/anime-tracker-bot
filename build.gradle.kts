@@ -33,7 +33,7 @@ dependencies {
     implementation("org.hibernate.orm:hibernate-core:7.2.12.Final")
     implementation("jakarta.persistence:jakarta.persistence-api:3.2.0")
     implementation("jakarta.annotation:jakarta.annotation-api:3.0.0")
-    compileOnly("org.springframework.kafka:spring-kafka:4.0.5")
+    implementation("org.springframework.kafka:spring-kafka:4.0.5")
     implementation("org.telegram:telegrambots-longpolling:7.11.0")
     implementation("org.telegram:telegrambots-client:7.11.0")
     implementation("com.fasterxml.jackson.core:jackson-databind")
