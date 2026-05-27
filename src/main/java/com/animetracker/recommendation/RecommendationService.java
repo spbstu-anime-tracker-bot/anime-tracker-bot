@@ -2,7 +2,7 @@ package com.animetracker.recommendation;
 
 import com.animetracker.anime.Anime;
 import com.animetracker.anime.AnimeSearchService;
-// import com.animetracker.llm.LlmService;
+import com.animetracker.llm.LlmService;
 import com.animetracker.recommendation.internal.RecommendationCache;
 import com.animetracker.recommendation.internal.RecommendationCacheRepository;
 import com.animetracker.recommendation.internal.RecommendationProducer;
@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,7 +32,7 @@ public class RecommendationService {
     private final RecommendationRequestRepository requestRepository;
     private final AnimeSearchService animeSearchService;
     private final TrackingService trackingService;
-    // private final LlmService llmService;
+    private final LlmService llmService;
     private final RecommendationProducer producer;
 
     public boolean hasCachedRecommendations(Long userId) {
@@ -83,7 +84,6 @@ public class RecommendationService {
 
     @Transactional
     public void processRecommendation(RecommendationRequestEvent event) {
-        /*
         Long userId = event.getTelegramId();
         log.info("Processing recommendation for user {}", userId);
 
@@ -136,7 +136,6 @@ public class RecommendationService {
             log.error("Error processing recommendations for user {}: {}", userId, e.getMessage());
             fail(event, reqOpt);
         }
-        */
     }
 
     @Transactional

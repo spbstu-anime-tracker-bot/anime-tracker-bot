@@ -2,6 +2,7 @@ package com.animetracker.config;
 
 import com.animetracker.anime.AnimeSearchService;
 import com.animetracker.bot.TelegramBot;
+import com.animetracker.llm.LlmService;
 import com.animetracker.module.SearchAnimeModule;
 import com.animetracker.recommendation.RecommendationService;
 import com.animetracker.tracking.TrackingService;
@@ -9,7 +10,6 @@ import com.animetracker.user.UserRegistrationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
@@ -24,16 +24,9 @@ import java.util.Properties;
                 UserRegistrationService.class,
                 TrackingService.class,
                 RecommendationService.class,
-                SearchAnimeModule.class
-        },
-        excludeFilters = @ComponentScan.Filter(
-                type = FilterType.REGEX,
-                pattern = {
-                        "com\\.animetracker\\.llm\\..*",
-                        "com\\.animetracker\\.module\\.AdviseModule",
-                        "com\\.animetracker\\.module\\.HealthCheckModule"
-                }
-        )
+                SearchAnimeModule.class,
+                LlmService.class
+        }
 )
 public class AppConfig {
 
@@ -51,6 +44,10 @@ public class AppConfig {
         properties.setProperty("spring.kafka.bootstrap-servers", env("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092"));
         properties.setProperty("kafka.topics.recommendation-requests", "recommendation.requests");
         properties.setProperty("kafka.topics.recommendation-results", "recommendation.results");
+        properties.setProperty("ollama.api.url", env("OLLAMA_URL", "http://host.docker.internal:11434/api/generate"));
+        properties.setProperty("ollama.api.model", env("OLLAMA_MODEL", "gemma3"));
+        properties.setProperty("ollama.api.timeout-seconds", env("OLLAMA_TIMEOUT_SECONDS", "120"));
+        properties.setProperty("admin.token", env("ADMIN_API_TOKEN", "admin-secret-token"));
 
         PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
         configurer.setProperties(properties);

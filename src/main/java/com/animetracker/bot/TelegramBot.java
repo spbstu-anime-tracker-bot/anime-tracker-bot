@@ -1,14 +1,17 @@
 package com.animetracker.bot;
 
 import com.animetracker.anime.Anime;
+import com.animetracker.module.AdviseModule;
 import com.animetracker.module.AuthUserModule;
 import com.animetracker.module.DisplayCardsModule;
 import com.animetracker.module.DisplayUserListsModule;
 import com.animetracker.module.ManageUserListsModule;
 import com.animetracker.module.RateAnimeModule;
 import com.animetracker.module.SearchAnimeModule;
+import com.animetracker.recommendation.RecommendationReadyEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
@@ -40,6 +43,7 @@ public class TelegramBot implements LongPollingUpdateConsumer {
     private final ManageUserListsModule manageUserListsModule;
     private final DisplayUserListsModule displayUserListsModule;
     private final RateAnimeModule rateAnimeModule;
+    private final AdviseModule adviseModule;
     private final UserSessionService sessionService;
 
     public TelegramBot(
@@ -50,6 +54,7 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             ManageUserListsModule manageUserListsModule,
             DisplayUserListsModule displayUserListsModule,
             RateAnimeModule rateAnimeModule,
+            AdviseModule adviseModule,
             UserSessionService sessionService) {
         this.botToken = botToken;
         this.telegramClient = new OkHttpTelegramClient(botToken);
@@ -59,6 +64,7 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         this.manageUserListsModule = manageUserListsModule;
         this.displayUserListsModule = displayUserListsModule;
         this.rateAnimeModule = rateAnimeModule;
+        this.adviseModule = adviseModule;
         this.sessionService = sessionService;
     }
 
@@ -150,7 +156,7 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         }
 
         if (text.equals("/advise")) {
-            send(chatId, TEMPORARILY_DISABLED);
+            handleAdvise(userId, chatId);
             return;
         }
 
@@ -160,6 +166,53 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         }
 
         send(chatId, "Пожалуйста, используйте команды. Введите /start для помощи.");
+    }
+
+    private void handleAdvise(Long userId, Long chatId) {
+        if (adviseModule.hasCachedRecommendations(userId)) {
+            List<Anime> cached = adviseModule.getCachedRecommendations(userId);
+            if (cached != null && !cached.isEmpty()) {
+                send(chatId, "📋 Ваши рекомендации:");
+                sendResults(userId, chatId, cached);
+                return;
+            }
+        }
+
+        if (!adviseModule.hasWatchedAnime(userId)) {
+            send(chatId, "У вас пока нет просмотренных аниме. Показываем самые популярные:");
+            sendResults(userId, chatId, adviseModule.getPopularFallback());
+            return;
+        }
+
+        if (adviseModule.isAlreadyProcessing(userId)) {
+            send(chatId, "⏳ Рекомендации уже формируются. Пожалуйста, подождите.");
+            return;
+        }
+
+        send(chatId, "⏳ Формируем рекомендации на основе ваших оценок... Это займёт немного времени.");
+        boolean sent = adviseModule.requestNewRecommendations(userId);
+        if (!sent) {
+            send(chatId, "Функция временно недоступна. Попробуйте повторить запрос через некоторое время");
+        }
+    }
+
+    @EventListener
+    public void onRecommendationReady(RecommendationReadyEvent event) {
+        Long userId = event.getTelegramId();
+        UserSession session = sessionService.get(userId);
+        Long chatId = session != null ? session.getChatId() : userId;
+
+        if ("COMPLETED".equals(event.getStatus())) {
+            List<Anime> recommendations = adviseModule.getCachedRecommendations(userId);
+            if (recommendations != null && !recommendations.isEmpty()) {
+                send(chatId, "✅ Рекомендации готовы!");
+                sendResults(userId, chatId, recommendations);
+            } else {
+                send(chatId, "Функция временно недоступна. Попробуйте повторить запрос через некоторое время");
+            }
+        } else {
+            send(chatId, "Функция временно недоступна. Попробуйте повторить запрос через некоторое время");
+        }
     }
 
     private void handleCallback(CallbackQuery callbackQuery) {
