@@ -57,4 +57,5 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
         LIMIT :limit
         """, nativeQuery = true)
     List<Anime> findTopPopular(@Param("limit") int limit);
+
 }

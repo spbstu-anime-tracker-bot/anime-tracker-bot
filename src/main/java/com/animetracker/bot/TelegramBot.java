@@ -22,6 +22,7 @@ import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageRe
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -337,51 +338,30 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         }
 
         List<Anime> pageItems = session.getCurrentPageItems();
-        List<Integer> cardIds = new ArrayList<>(session.getCardMessageIds());
-        int oldSize = cardIds.size();
-        int newSize = pageItems.size();
+        List<Integer> cardIds = session.getCardMessageIds();
 
-        for (int i = 0; i < Math.min(newSize, oldSize); i++) {
+        for (int i = 0; i < cardIds.size(); i++) {
             try {
-                telegramClient.execute(EditMessageText.builder()
-                        .chatId(chatId)
-                        .messageId(cardIds.get(i))
-                        .text(buildCardText(userId, pageItems.get(i)))
-                        .parseMode("Markdown")
-                        .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
-                        .build());
+                if (i < pageItems.size()) {
+                    telegramClient.execute(EditMessageText.builder()
+                            .chatId(chatId)
+                            .messageId(cardIds.get(i))
+                            .text(buildCardText(userId, pageItems.get(i)))
+                            .parseMode("Markdown")
+                            .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
+                            .build());
+                } else {
+                    telegramClient.execute(EditMessageText.builder()
+                            .chatId(chatId)
+                            .messageId(cardIds.get(i))
+                            .text("\u2060")
+                            .replyMarkup(new InlineKeyboardMarkup(List.of()))
+                            .build());
+                }
             } catch (Exception e) {
                 log.warn("Could not edit card: {}", e.getMessage());
             }
         }
-
-        for (int i = oldSize - 1; i >= newSize; i--) {
-            try {
-                telegramClient.execute(DeleteMessage.builder()
-                        .chatId(chatId)
-                        .messageId(cardIds.get(i))
-                        .build());
-                cardIds.remove(i);
-            } catch (Exception e) {
-                log.warn("Could not delete card: {}", e.getMessage());
-            }
-        }
-
-        for (int i = oldSize; i < newSize; i++) {
-            try {
-                Message sent = telegramClient.execute(SendMessage.builder()
-                        .chatId(chatId)
-                        .text(buildCardText(userId, pageItems.get(i)))
-                        .parseMode("Markdown")
-                        .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
-                        .build());
-                cardIds.add(sent.getMessageId());
-            } catch (Exception e) {
-                log.error("Error sending new card: {}", e.getMessage());
-            }
-        }
-
-        session.setCardMessageIds(cardIds);
 
         if (session.getNavMessageId() != null) {
             try {
@@ -407,15 +387,26 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         sessionService.setResults(userId, results, chatId);
         UserSession session = sessionService.get(userId);
         List<Integer> cardMessageIds = new ArrayList<>();
+        List<Anime> pageItems = session.getCurrentPageItems();
+        boolean multiPage = session.getTotalPages() > 1;
+        int slots = multiPage ? UserSession.PAGE_SIZE : pageItems.size();
 
-        for (Anime anime : session.getCurrentPageItems()) {
+        for (int i = 0; i < slots; i++) {
             try {
-                Message sent = telegramClient.execute(SendMessage.builder()
-                        .chatId(chatId)
-                        .text(buildCardText(userId, anime))
-                        .parseMode("Markdown")
-                        .replyMarkup(buildCardKeyboard(userId, anime))
-                        .build());
+                Message sent;
+                if (i < pageItems.size()) {
+                    sent = telegramClient.execute(SendMessage.builder()
+                            .chatId(chatId)
+                            .text(buildCardText(userId, pageItems.get(i)))
+                            .parseMode("Markdown")
+                            .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
+                            .build());
+                } else {
+                    sent = telegramClient.execute(SendMessage.builder()
+                            .chatId(chatId)
+                            .text("⠀")
+                            .build());
+                }
                 cardMessageIds.add(sent.getMessageId());
             } catch (Exception e) {
                 log.error("Error sending card: {}", e.getMessage());
@@ -427,7 +418,7 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             try {
                 Message sentNav = telegramClient.execute(SendMessage.builder()
                         .chatId(chatId)
-                        .text("Страница " + (session.getCurrentPage() + 1) + " из " + session.getTotalPages())
+                        .text("Меню")
                         .replyMarkup(displayCardsModule.buildNavKeyboard(
                                 session.hasPrevPage(), session.hasNextPage(),
                                 session.getCurrentPage(), session.getTotalPages()))

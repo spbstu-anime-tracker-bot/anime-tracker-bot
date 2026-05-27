@@ -44,6 +44,7 @@ public class OllamaService implements LlmService {
     @Override
     public List<String> getRecommendations(List<Object[]> watchedAnime) {
         String prompt = buildPrompt(watchedAnime);
+        log.info("Ollama request prompt:\n{}", prompt);
         Map<String, Object> requestBody = Map.of(
                 "model", model,
                 "prompt", prompt,
@@ -90,8 +91,10 @@ public class OllamaService implements LlmService {
         StringBuilder sb = new StringBuilder();
         if (!rated.isEmpty()) sb.append("Anime I have watched and rated:\n").append(rated);
         if (!watched.isEmpty()) sb.append("\nAnime I have watched (no rating):\n").append(watched);
-        sb.append("\nBased on my watch history, recommend exactly 10 anime I have NOT watched yet. ");
-        sb.append("Return ONLY a numbered list of anime titles (1-10), one per line, no explanations. ");
+        sb.append("\nBased on my watch history, consider the genres, themes, and mood of what I enjoyed most. ");
+        sb.append("Recommend exactly 10 anime I have NOT watched that best match my personal taste. ");
+        sb.append("If I gave the anime a high rating, then I need to recommend similar anime on the same subject. ");
+        sb.append("Format each line as: NUMBER. TITLE. there should be no other text. ");
         sb.append("Use the official title as it appears on MyAnimeList.");
         return sb.toString();
     }
@@ -101,10 +104,12 @@ public class OllamaService implements LlmService {
         try {
             JsonNode root = objectMapper.readTree(responseBody);
             String text = root.path("response").asText();
+            log.info("Ollama response:\n{}", text);
             for (String line : text.split("\n")) {
                 line = line.trim();
                 if (line.isEmpty()) continue;
                 line = line.replaceAll("^\\d+[.)\\-]\\s*", "").trim();
+                line = line.replaceAll("\\.$", "").trim();
                 if (!line.isEmpty()) titles.add(line);
             }
         } catch (Exception e) {
