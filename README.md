@@ -1,4 +1,4 @@
-# Anime Tracker and Advisor Bot
+[# Anime Tracker and Advisor Bot
 
 Telegram-бот для ведения списков аниме и получения персональных рекомендаций на основе локальной LLM (Ollama).
 
@@ -19,7 +19,7 @@ Telegram-бот для ведения списков аниме и получе�
 |---|---|---|
 | Java | 25 | Язык разработки |
 | Spring Framework | 7.0.7 | Core, MVC, JPA, Events |
-| Spring REST (Spring MVC) | 6.2.8 | REST API (`/health`, `/admin/users`) |
+| Spring REST (Spring MVC) | 7.0.7 | REST API (`/health`, `/admin/users`) |
 | Spring JPA + Hibernate | 6.6.x | ORM, работа с PostgreSQL |
 | Spring Modulith | 2.0.6 | Модульная архитектура |
 | PostgreSQL | 17 | Основная база данных |
@@ -227,3 +227,4 @@ OLLAMA_MODEL=llama3.2
 - `"user"` — пользовательские данные: `"user"`, `"listViewed"`, `"listToView"`, `"recommendationRequests"`, `"recommendationCache"`
 
 Схемы создаются автоматически из `docker/init/01_schemas.sql`.
+]()

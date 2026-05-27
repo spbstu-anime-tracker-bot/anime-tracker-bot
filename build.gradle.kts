@@ -1,7 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "3.5.3"
-    id("io.spring.dependency-management") version "1.1.7"
     java
+    application
 }
 
 group = "com.animetracker"
@@ -24,27 +23,53 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.springframework.kafka:spring-kafka")
-    implementation("org.telegram:telegrambots-springboot-longpolling-starter:7.11.0")
+    implementation(platform("org.springframework:spring-framework-bom:7.0.7"))
+    implementation(platform("com.fasterxml.jackson:jackson-bom:2.21.2"))
+    implementation("org.springframework:spring-context")
+    compileOnly("org.springframework:spring-webmvc")
+    compileOnly("org.springframework.data:spring-data-jpa:4.0.5")
+    compileOnly("org.hibernate.orm:hibernate-core:7.2.12.Final")
+    compileOnly("jakarta.persistence:jakarta.persistence-api:3.2.0")
+    implementation("jakarta.annotation:jakarta.annotation-api:3.0.0")
+    compileOnly("org.springframework.kafka:spring-kafka:4.0.5")
+    implementation("org.telegram:telegrambots-longpolling:7.11.0")
     implementation("org.telegram:telegrambots-client:7.11.0")
     implementation("com.fasterxml.jackson.core:jackson-databind")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    implementation("org.slf4j:slf4j-api:2.0.17")
+    runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
     implementation(platform("org.springframework.modulith:spring-modulith-bom:2.0.6"))
-    implementation("org.springframework.modulith:spring-modulith-starter-core")
-    implementation("org.springframework.modulith:spring-modulith-starter-jpa")
-    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+    compileOnly("org.springframework.modulith:spring-modulith-core:2.0.6")
+    testImplementation(platform("org.springframework.modulith:spring-modulith-bom:2.0.6"))
+    testImplementation("org.springframework.modulith:spring-modulith-core")
+    testImplementation("org.springframework.boot:spring-boot:4.0.6")
 
-    runtimeOnly("org.postgresql:postgresql")
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
+    compileOnly("org.postgresql:postgresql:42.7.10")
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.kafka:spring-kafka-test")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.1")
+    testImplementation("org.springframework.kafka:spring-kafka-test:4.0.5")
+}
+
+application {
+    mainClass = "com.animetracker.AnimeTrackerApplication"
 }
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = application.mainClass.get()
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        configurations.runtimeClasspath.get()
+            .filter { it.exists() }
+            .map { if (it.isDirectory) it else zipTree(it) }
+    })
+    exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA")
 }

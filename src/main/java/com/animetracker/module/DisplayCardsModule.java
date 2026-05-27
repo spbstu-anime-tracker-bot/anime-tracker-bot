@@ -8,7 +8,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class DisplayCardsModule {
@@ -98,11 +97,7 @@ public class DisplayCardsModule {
     }
 
     private String buildGenres(Anime anime) {
-        if (anime.getAnimeGenres() == null) return "";
-        return anime.getAnimeGenres().stream()
-                .map(ag -> ag.getGenre() != null ? ag.getGenre().getName() : "")
-                .filter(s -> !s.isBlank())
-                .collect(Collectors.joining(", "));
+        return String.join(", ", anime.getGenreNames());
     }
 
     private String buildDateRange(Anime anime) {

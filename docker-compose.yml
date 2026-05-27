@@ -11,8 +11,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init:/docker-entrypoint-initdb.d
-      # Если у вас есть дамп базы — положите его в docker/data/dump.sql
-      # Он будет импортирован автоматически при первом запуске
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -65,7 +63,6 @@ services:
       OLLAMA_URL: http://host.docker.internal:11434/api/generate
       OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3}
       ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-admin-secret}
-      JAVA_TOOL_OPTIONS: "-Dhttps.proxyHost=host.docker.internal -Dhttps.proxyPort=12334 -Dhttp.proxyHost=host.docker.internal -Dhttp.proxyPort=12334"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
