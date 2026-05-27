@@ -2,13 +2,14 @@ package com.animetracker.config;
 
 import com.animetracker.anime.AnimeSearchService;
 import com.animetracker.bot.TelegramBot;
-import com.animetracker.module.AuthUserModule;
-import com.animetracker.module.DisplayCardsModule;
 import com.animetracker.module.SearchAnimeModule;
+import com.animetracker.recommendation.RecommendationService;
+import com.animetracker.tracking.TrackingService;
 import com.animetracker.user.UserRegistrationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 
@@ -16,11 +17,27 @@ import java.util.Properties;
 
 @Configuration
 @Import({DatabaseConfig.class, JacksonConfig.class})
-@ComponentScan(basePackageClasses = {
-        TelegramBot.class,
-        AnimeSearchService.class,
-        UserRegistrationService.class
-})
+@ComponentScan(
+        basePackageClasses = {
+                TelegramBot.class,
+                AnimeSearchService.class,
+                UserRegistrationService.class,
+                TrackingService.class,
+                RecommendationService.class,
+                SearchAnimeModule.class
+        },
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = {
+                        "com\\.animetracker\\.llm\\..*",
+                        "com\\.animetracker\\.module\\.AdviseModule",
+                        "com\\.animetracker\\.module\\.HealthCheckModule",
+                        "com\\.animetracker\\.module\\.RecommendationWorker",
+                        "com\\.animetracker\\.recommendation\\.internal\\.RecommendationProducer",
+                        "com\\.animetracker\\.recommendation\\.internal\\.RecommendationResultConsumer"
+                }
+        )
+)
 public class AppConfig {
 
     @Bean
@@ -38,21 +55,6 @@ public class AppConfig {
         PropertySourcesPlaceholderConfigurer configurer = new PropertySourcesPlaceholderConfigurer();
         configurer.setProperties(properties);
         return configurer;
-    }
-
-    @Bean
-    public SearchAnimeModule searchAnimeModule(AnimeSearchService animeSearchService) {
-        return new SearchAnimeModule(animeSearchService);
-    }
-
-    @Bean
-    public DisplayCardsModule displayCardsModule() {
-        return new DisplayCardsModule();
-    }
-
-    @Bean
-    public AuthUserModule authUserModule(UserRegistrationService userRegistrationService) {
-        return new AuthUserModule(userRegistrationService);
     }
 
     private static String env(String key, String fallback) {

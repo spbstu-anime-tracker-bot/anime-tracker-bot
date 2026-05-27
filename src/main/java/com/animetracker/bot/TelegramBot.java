@@ -3,6 +3,9 @@ package com.animetracker.bot;
 import com.animetracker.anime.Anime;
 import com.animetracker.module.AuthUserModule;
 import com.animetracker.module.DisplayCardsModule;
+import com.animetracker.module.DisplayUserListsModule;
+import com.animetracker.module.ManageUserListsModule;
+import com.animetracker.module.RateAnimeModule;
 import com.animetracker.module.SearchAnimeModule;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,6 +37,9 @@ public class TelegramBot implements LongPollingUpdateConsumer {
     private final AuthUserModule authUserModule;
     private final SearchAnimeModule searchAnimeModule;
     private final DisplayCardsModule displayCardsModule;
+    private final ManageUserListsModule manageUserListsModule;
+    private final DisplayUserListsModule displayUserListsModule;
+    private final RateAnimeModule rateAnimeModule;
     private final UserSessionService sessionService;
 
     public TelegramBot(
@@ -41,12 +47,18 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             AuthUserModule authUserModule,
             SearchAnimeModule searchAnimeModule,
             DisplayCardsModule displayCardsModule,
+            ManageUserListsModule manageUserListsModule,
+            DisplayUserListsModule displayUserListsModule,
+            RateAnimeModule rateAnimeModule,
             UserSessionService sessionService) {
         this.botToken = botToken;
         this.telegramClient = new OkHttpTelegramClient(botToken);
         this.authUserModule = authUserModule;
         this.searchAnimeModule = searchAnimeModule;
         this.displayCardsModule = displayCardsModule;
+        this.manageUserListsModule = manageUserListsModule;
+        this.displayUserListsModule = displayUserListsModule;
+        this.rateAnimeModule = rateAnimeModule;
         this.sessionService = sessionService;
     }
 
@@ -92,7 +104,17 @@ public class TelegramBot implements LongPollingUpdateConsumer {
         }
 
         if (text.startsWith("/search_by")) {
-            send(chatId, TEMPORARILY_DISABLED);
+            String params = text.substring("/search_by".length()).trim();
+            if (params.isEmpty()) {
+                send(chatId, "Использование: /search_by <жанр/тип/год>, ...\nПример: /search_by Action, TV, 2020");
+                return;
+            }
+            SearchAnimeModule.SearchResult result = searchAnimeModule.searchByFilters(params);
+            if (result.isError()) {
+                send(chatId, result.errorMessage());
+            } else {
+                sendResults(userId, chatId, result.anime());
+            }
             return;
         }
 
@@ -107,6 +129,31 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             return;
         }
 
+        if (text.equals("/list_viewed")) {
+            List<Anime> results = displayUserListsModule.getViewedList(userId);
+            if (results.isEmpty()) {
+                send(chatId, "Ваш список просмотренных пуст.");
+            } else {
+                sendResults(userId, chatId, results);
+            }
+            return;
+        }
+
+        if (text.equals("/list_to_view")) {
+            List<Anime> results = displayUserListsModule.getToViewList(userId);
+            if (results.isEmpty()) {
+                send(chatId, "Ваш список отслеживаемых пуст.");
+            } else {
+                sendResults(userId, chatId, results);
+            }
+            return;
+        }
+
+        if (text.equals("/advise")) {
+            send(chatId, TEMPORARILY_DISABLED);
+            return;
+        }
+
         if (text.startsWith("/")) {
             send(chatId, TEMPORARILY_DISABLED);
             return;
@@ -118,7 +165,10 @@ public class TelegramBot implements LongPollingUpdateConsumer {
     private void handleCallback(CallbackQuery callbackQuery) {
         Long userId = callbackQuery.getFrom().getId();
         Long chatId = callbackQuery.getMessage().getChatId();
+        Integer messageId = callbackQuery.getMessage().getMessageId();
         String data = callbackQuery.getData();
+
+        authUserModule.registerOrGet(userId, callbackQuery.getFrom().getFirstName());
 
         if ("noop".equals(data)) {
             answerCallback(callbackQuery.getId(), "");
@@ -135,7 +185,90 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             return;
         }
 
+        if (data.startsWith("av:")) {
+            Long animeId = Long.parseLong(data.substring(3));
+            String result = manageUserListsModule.addToViewed(userId, animeId);
+            answerCallback(callbackQuery.getId(), result);
+            refreshCard(userId, chatId, messageId, animeId);
+            return;
+        }
+        if (data.startsWith("rv:")) {
+            Long animeId = Long.parseLong(data.substring(3));
+            String result = manageUserListsModule.removeFromViewed(userId, animeId);
+            answerCallback(callbackQuery.getId(), result);
+            refreshCard(userId, chatId, messageId, animeId);
+            return;
+        }
+        if (data.startsWith("at:")) {
+            Long animeId = Long.parseLong(data.substring(3));
+            String result = manageUserListsModule.addToToView(userId, animeId);
+            answerCallback(callbackQuery.getId(), result);
+            refreshCard(userId, chatId, messageId, animeId);
+            return;
+        }
+        if (data.startsWith("rt:")) {
+            Long animeId = Long.parseLong(data.substring(3));
+            String result = manageUserListsModule.removeFromToView(userId, animeId);
+            answerCallback(callbackQuery.getId(), result);
+            refreshCard(userId, chatId, messageId, animeId);
+            return;
+        }
+        if (data.startsWith("ra:")) {
+            Long animeId = Long.parseLong(data.substring(3));
+            if (!manageUserListsModule.isInViewed(userId, animeId)) {
+                answerCallback(callbackQuery.getId(), "Сначала добавьте аниме в просмотренные.");
+                return;
+            }
+            sessionService.setAwaitingRating(userId, data.substring(3));
+            try {
+                telegramClient.execute(EditMessageReplyMarkup.builder()
+                        .chatId(chatId)
+                        .messageId(messageId)
+                        .replyMarkup(displayCardsModule.buildRatingKeyboard(animeId))
+                        .build());
+            } catch (Exception e) {
+                log.warn("Error showing rating keyboard: {}", e.getMessage());
+            }
+            answerCallback(callbackQuery.getId(), "Выберите оценку:");
+            return;
+        }
+        if (data.startsWith("rs:")) {
+            String[] parts = data.substring(3).split(":");
+            Long animeId = Long.parseLong(parts[0]);
+            int score = Integer.parseInt(parts[1]);
+            String result = rateAnimeModule.rate(userId, animeId, score);
+            answerCallback(callbackQuery.getId(), result);
+            sessionService.clearRatingAwait(userId);
+            refreshCard(userId, chatId, messageId, animeId);
+            return;
+        }
+
         answerCallback(callbackQuery.getId(), TEMPORARILY_DISABLED);
+    }
+
+    private void refreshCard(Long userId, Long chatId, Integer messageId, Long animeId) {
+        UserSession session = sessionService.get(userId);
+        if (session == null) return;
+        Anime anime = session.getResults().stream()
+                .filter(a -> a.getId().equals(animeId))
+                .findFirst()
+                .orElse(null);
+        if (anime == null) return;
+
+        boolean inViewed = manageUserListsModule.isInViewed(userId, animeId);
+        boolean inToView = manageUserListsModule.isInToView(userId, animeId);
+        Integer userScore = manageUserListsModule.getUserScore(userId, animeId);
+        try {
+            telegramClient.execute(EditMessageText.builder()
+                    .chatId(chatId)
+                    .messageId(messageId)
+                    .text(displayCardsModule.buildCardText(anime, userScore))
+                    .parseMode("Markdown")
+                    .replyMarkup(displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore))
+                    .build());
+        } catch (Exception e) {
+            log.warn("Could not edit message: {}", e.getMessage());
+        }
     }
 
     private void navigatePage(Long userId, Long chatId, boolean next) {
@@ -160,8 +293,9 @@ public class TelegramBot implements LongPollingUpdateConsumer {
                 telegramClient.execute(EditMessageText.builder()
                         .chatId(chatId)
                         .messageId(cardIds.get(i))
-                        .text(displayCardsModule.buildCardText(pageItems.get(i), null))
+                        .text(buildCardText(userId, pageItems.get(i)))
                         .parseMode("Markdown")
+                        .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
                         .build());
             } catch (Exception e) {
                 log.warn("Could not edit card: {}", e.getMessage());
@@ -184,8 +318,9 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             try {
                 Message sent = telegramClient.execute(SendMessage.builder()
                         .chatId(chatId)
-                        .text(displayCardsModule.buildCardText(pageItems.get(i), null))
+                        .text(buildCardText(userId, pageItems.get(i)))
                         .parseMode("Markdown")
+                        .replyMarkup(buildCardKeyboard(userId, pageItems.get(i)))
                         .build());
                 cardIds.add(sent.getMessageId());
             } catch (Exception e) {
@@ -224,8 +359,9 @@ public class TelegramBot implements LongPollingUpdateConsumer {
             try {
                 Message sent = telegramClient.execute(SendMessage.builder()
                         .chatId(chatId)
-                        .text(displayCardsModule.buildCardText(anime, null))
+                        .text(buildCardText(userId, anime))
                         .parseMode("Markdown")
+                        .replyMarkup(buildCardKeyboard(userId, anime))
                         .build());
                 cardMessageIds.add(sent.getMessageId());
             } catch (Exception e) {
@@ -248,6 +384,20 @@ public class TelegramBot implements LongPollingUpdateConsumer {
                 log.error("Error sending nav: {}", e.getMessage());
             }
         }
+    }
+
+    private String buildCardText(Long userId, Anime anime) {
+        Integer userScore = manageUserListsModule.getUserScore(userId, anime.getId());
+        return displayCardsModule.buildCardText(anime, userScore);
+    }
+
+    private org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup buildCardKeyboard(
+            Long userId,
+            Anime anime) {
+        boolean inViewed = manageUserListsModule.isInViewed(userId, anime.getId());
+        boolean inToView = manageUserListsModule.isInToView(userId, anime.getId());
+        Integer userScore = manageUserListsModule.getUserScore(userId, anime.getId());
+        return displayCardsModule.buildCardKeyboard(anime, inViewed, inToView, userScore);
     }
 
     public void send(Long chatId, String text) {
