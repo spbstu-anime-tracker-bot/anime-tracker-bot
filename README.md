@@ -2,6 +2,10 @@
 
 Telegram-бот для ведения списков аниме и получения персональных рекомендаций на LLM Gigachat.
 
+## Ссылки
+- Бот: @anime_tracker_advisor_bot
+- Docker Hub: hub.docker.com/r/putyata/anime-tracker-bot
+
 ## Возможности
 
 - Поиск аниме по названию (`/search`)
@@ -26,7 +30,7 @@ Telegram-бот для ведения списков аниме и получе�
 | Apache Kafka | 7.6.0 | Асинхронная обработка рекомендаций   |
 | Docker / Docker Compose | 28.5.2 | Контейнеризация                      |
 | telegrambots | 7.11.0 | Telegram Bot API                     |
-| LLM | Gigachat |
+| LLM | Gigachat | Рекомендации аниме на основе истории просмотра и оценок
 
 ## Архитектура модулей (Spring Modulith)
 
