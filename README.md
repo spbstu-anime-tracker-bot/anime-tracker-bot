@@ -1,4 +1,4 @@
-[# Anime Tracker and Advisor Bot
+# Anime Tracker and Advisor Bot
 
 Telegram-бот для ведения списков аниме и получения персональных рекомендаций на LLM Gigachat.
 
@@ -15,18 +15,18 @@ Telegram-бот для ведения списков аниме и получе�
 
 ## Технологический стек
 
-| Технология | Версия | Назначение |
-|---|---|---|
-| Java | 25 | Язык разработки |
-| Spring Framework | 7.0.7 | Core, MVC, JPA, Events |
+| Технология | Версия | Назначение                           |
+|---|---|--------------------------------------|
+| Java | 25 | Язык разработки                      |
+| Spring Framework | 7.0.7 | Core, MVC, JPA, Events               |
 | Spring REST (Spring MVC) | 7.0.7 | REST API (`/health`, `/admin/users`) |
-| Spring JPA + Hibernate | 6.6.x | ORM, работа с PostgreSQL |
-| Spring Modulith | 2.0.6 | Модульная архитектура |
-| PostgreSQL | 17 | Основная база данных |
-| Apache Kafka | 7.6.0 | Асинхронная обработка рекомендаций |
-| Ollama | 0.24.0 | Локальная LLM (модель gemma3) |
-| Docker / Docker Compose | 28.5.2 | Контейнеризация |
-| telegrambots | 7.11.0 | Telegram Bot API |
+| Spring JPA + Hibernate | 6.6.x | ORM, работа с PostgreSQL             |
+| Spring Modulith | 2.0.6 | Модульная архитектура                |
+| PostgreSQL | 17 | Основная база данных                 |
+| Apache Kafka | 7.6.0 | Асинхронная обработка рекомендаций   |
+| Ollama | 0.24.0 | Локальная LLM (модель GigaChat)      |
+| Docker / Docker Compose | 28.5.2 | Контейнеризация                      |
+| telegrambots | 7.11.0 | Telegram Bot API                     |
 
 ## Архитектура модулей (Spring Modulith)
 
@@ -214,4 +214,3 @@ HTTP 401 при отсутствии или неверном токене.
 - `"user"` — пользовательские данные: `"user"`, `"listViewed"`, `"listToView"`, `"recommendationRequests"`, `"recommendationCache"`
 
 Схемы создаются автоматически из `docker/init/01_schemas.sql`.
-]()

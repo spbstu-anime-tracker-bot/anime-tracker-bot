@@ -13,8 +13,14 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> {
 
     @Query(value = """
         SELECT * FROM anime.anime
-        WHERE (LOWER(title) LIKE LOWER(CONCAT('%', :query, '%'))
-            OR LOWER(title_english) LIKE LOWER(CONCAT('%', :query, '%')))
+        WHERE (
+            LOWER(title) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR LOWER(title_english) LIKE LOWER(CONCAT('%', :query, '%'))
+            OR regexp_replace(LOWER(title), '[^[:alnum:]]+', '', 'g')
+                LIKE CONCAT('%', regexp_replace(LOWER(:query), '[^[:alnum:]]+', '', 'g'), '%')
+            OR regexp_replace(LOWER(title_english), '[^[:alnum:]]+', '', 'g')
+                LIKE CONCAT('%', regexp_replace(LOWER(:query), '[^[:alnum:]]+', '', 'g'), '%')
+        )
         ORDER BY
             CASE WHEN score IS NOT NULL AND scored_by IS NOT NULL AND scored_by > 0
                  THEN score * LOG(scored_by::numeric) ELSE 0 END DESC
