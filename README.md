@@ -9,7 +9,7 @@ Telegram-бот для ведения списков аниме и получе�
 - Список просмотренных аниме (`/list_viewed`)
 - Список отслеживаемых аниме (`/list_to_view`)
 - Оценка аниме от 1 до 10
-- Персональные рекомендации от Ollama LLM (`/advise`)
+- Персональные рекомендации от Gigachat LLM (`/advise`)
 - Health Check endpoint (`GET /health`)
 - Admin API (`GET /admin/users`)
 
@@ -24,9 +24,9 @@ Telegram-бот для ведения списков аниме и получе�
 | Spring Modulith | 2.0.6 | Модульная архитектура                |
 | PostgreSQL | 17 | Основная база данных                 |
 | Apache Kafka | 7.6.0 | Асинхронная обработка рекомендаций   |
-| Ollama | 0.24.0 | Локальная LLM (модель GigaChat)      |
 | Docker / Docker Compose | 28.5.2 | Контейнеризация                      |
 | telegrambots | 7.11.0 | Telegram Bot API                     |
+| LLM | Gigachat |
 
 ## Архитектура модулей (Spring Modulith)
 
@@ -37,7 +37,7 @@ Telegram-бот для ведения списков аниме и получе�
 anime          — каталог аниме (Spring JPA + Hibernate)
 user           — регистрация пользователей
 tracking       — списки просмотренных/отслеживаемых, оценки
-recommendation — рекомендательный движок (Kafka + Ollama)
+recommendation — рекомендательный движок (Kafka + Gigachat)
 llm            — абстракция над LLM-провайдером (интерфейс LlmService)
 bot            — Telegram-бот (telegrambots v7)
 admin          — Spring REST Admin API
@@ -53,25 +53,14 @@ config         — конфигурация Kafka
 
 - Docker и Docker Compose
 - Telegram Bot Token ([BotFather](https://t.me/BotFather))
-- [Ollama](https://ollama.com/) — запущен локально на хосте (порт 11434)
 
-### 1. Установка и запуск Ollama
-
-```bash
-# Скачать и запустить Ollama (https://ollama.com/download)
-ollama pull gemma3
-ollama serve
-```
-
-Ollama должен быть доступен по адресу `http://localhost:11434`.
-
-### 2. Сборка JAR (обязательно перед Docker)
+### 1. Сборка JAR (обязательно перед Docker)
 
 ```bash
 ./gradlew bootJar
 ```
 
-### 3. Настройка переменных окружения
+### 2. Настройка переменных окружения
 
 Создайте файл `.env` в корне проекта:
 
@@ -92,7 +81,7 @@ DB_PASSWORD=postgres
 KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 ```
 
-### 4. Подключение базы данных
+### 3. Подключение базы данных
 
 #### Вариант A: Docker PostgreSQL (рекомендуется)
 
@@ -114,7 +103,7 @@ DB_USERNAME=postgres
 DB_PASSWORD=ваш_пароль
 ```
 
-### 5. Запуск через Docker Compose
+### 4. Запуск через Docker Compose
 
 ```bash
 docker-compose up -d
@@ -122,7 +111,7 @@ docker-compose up -d
 
 Порядок запуска: PostgreSQL → Kafka → приложение (с ожиданием healthcheck).
 
-### 6. Локальный запуск (без Docker)
+### 5. Локальный запуск (без Docker)
 
 Требуются локально запущенные PostgreSQL и Kafka.
 
@@ -147,7 +136,7 @@ GET /health
   "status": "UP",
   "postgresql": "UP",
   "kafka": "UP",
-  "ollama": "UP"
+  "gigachat": "UP"
 }
 ```
 
@@ -201,7 +190,7 @@ HTTP 401 при отсутствии или неверном токене.
 
 1. Если есть кэшированные рекомендации — показываются мгновенно.
 2. Если нет просмотренных аниме — показываются 10 самых популярных.
-3. Иначе — запрос отправляется в Kafka, воркер обращается к Ollama.
+3. Иначе — запрос отправляется в Kafka, воркер обращается к Gigachat.
 4. После генерации пользователь получает уведомление с результатом.
 
 Рекомендации автоматически пересчитываются при добавлении нового аниме в просмотренные или изменении оценки.
