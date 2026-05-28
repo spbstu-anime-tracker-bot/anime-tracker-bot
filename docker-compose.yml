@@ -53,16 +53,14 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+    env_file:
+      - .env
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/postgres
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
-      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
       OLLAMA_URL: http://host.docker.internal:11434/api/generate
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3}
-      ADMIN_API_TOKEN: ${ADMIN_API_TOKEN:-admin-secret}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:

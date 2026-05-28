@@ -54,6 +54,8 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter:6.0.1")
     testImplementation("org.springframework.kafka:spring-kafka-test:4.0.5")
+    testImplementation("org.mockito:mockito-core:5.17.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.17.0")
 }
 
 application {

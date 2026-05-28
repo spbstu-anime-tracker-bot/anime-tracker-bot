@@ -1,6 +1,6 @@
 [# Anime Tracker and Advisor Bot
 
-Telegram-бот для ведения списков аниме и получения персональных рекомендаций на основе локальной LLM (Ollama).
+Telegram-бот для ведения списков аниме и получения персональных рекомендаций на LLM Gigachat.
 
 ## Возможности
 
@@ -79,7 +79,8 @@ Ollama должен быть доступен по адресу `http://localhos
 TELEGRAM_BOT_TOKEN=токен_бота
 TELEGRAM_BOT_USERNAME=имя_бота
 ADMIN_API_TOKEN=секретный_токен
-OLLAMA_MODEL=gemma3
+GIGACHAT_AUTH_KEY=auth_key
+GIGACHAT_SCOPE=GIGACHAT_API_PERS
 ```
 
 Необязательные переменные (есть значения по умолчанию):
@@ -89,7 +90,6 @@ DB_URL=jdbc:postgresql://postgres:5432/postgres
 DB_USERNAME=postgres
 DB_PASSWORD=postgres
 KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-OLLAMA_URL=http://host.docker.internal:11434/api/generate
 ```
 
 ### 4. Подключение базы данных
@@ -205,19 +205,6 @@ HTTP 401 при отсутствии или неверном токене.
 4. После генерации пользователь получает уведомление с результатом.
 
 Рекомендации автоматически пересчитываются при добавлении нового аниме в просмотренные или изменении оценки.
-
-## Конфигурация Ollama
-
-| Параметр | Переменная | По умолчанию |
-|---|---|---|
-| URL API | `OLLAMA_URL` | `http://host.docker.internal:11434/api/generate` |
-| Модель | `OLLAMA_MODEL` | `gemma3` |
-| Таймаут | `ollama.api.timeout-seconds` | `120` сек |
-
-Для смены модели:
-```env
-OLLAMA_MODEL=llama3.2
-```
 
 ## Схема базы данных
 

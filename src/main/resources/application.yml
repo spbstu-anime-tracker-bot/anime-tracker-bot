@@ -43,6 +43,12 @@ ollama:
     model: ${OLLAMA_MODEL:gemma3}
     timeout-seconds: 120
 
+gigachat:
+  api:
+    auth-key: ${GIGACHAT_AUTH_KEY:}
+    model: ${GIGACHAT_MODEL:GigaChat}
+    scope: ${GIGACHAT_SCOPE:GIGACHAT_API_PERS}
+
 admin:
   token: ${ADMIN_API_TOKEN:admin-secret-token}
 
